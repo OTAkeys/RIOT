@@ -565,3 +565,9 @@ endif
 ifneq (,$(filter devfs,$(USEMODULE)))
   USEMODULE += vfs
 endif
+
+ifneq (,$(filter spiffs,$(USEMODULE)))
+    USEPKG += spiffs
+    USEMODULE += vfs
+    USEMODULE += spiffs_fs
+endif
