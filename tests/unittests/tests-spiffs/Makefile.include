@@ -1,0 +1,2 @@
+USEMODULE += spiffs
+USEMODULE += mtdi_native
