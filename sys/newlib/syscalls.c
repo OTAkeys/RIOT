@@ -39,6 +39,7 @@
 #include "reboot.h"
 #include "irq.h"
 #include "log.h"
+#include "vfs.h"
 
 #include "uart_stdio.h"
 
@@ -154,116 +155,176 @@ int _kill_r(struct _reent *r, pid_t pid, int sig)
 /**
  * @brief Open a file
  *
- * @param r     TODO
- * @param name  TODO
- * @param mode  TODO
+ * This is a wrapper around @c vfs_open
  *
- * @return      TODO
+ * @param r     pointer to reent structure
+ * @param name  file name to open
+ * @param flags flags, see man 3p open
+ * @param mode  mode, file creation mode if the file is created when opening
+ *
+ * @return      fd number (>= 0) on success
+ * @return      -1 on error, @c r->_errno set to a constant from errno.h to indicate the error
  */
 int _open_r(struct _reent *r, const char *name, int flags, int mode)
 {
-    (void) name;
-    (void) flags;
-    (void) mode;
-    r->_errno = ENODEV;                     /* not implemented yet */
-    return -1;
+    int fd = vfs_open(name, flags, mode);
+    if (fd < 0) {
+        /* vfs returns negative error codes */
+        r->_errno = -fd;
+        return -1;
+    }
+    return fd;
 }
 
 /**
- * @brief Read from a file
+ * @brief Read bytes from an open file
  *
- * All input is read from UART_0. The function will block until a byte is actually read.
+ * This is a wrapper around @c vfs_read
  *
- * Note: the read function does not buffer - data will be lost if the function is not
- * called fast enough.
+ * @param[in]  r      pointer to reent structure
+ * @param[in]  fd     open file descriptor obtained from @c open()
+ * @param[out] dest   destination buffer
+ * @param[in]  count  maximum number of bytes to read
  *
- * TODO: implement more sophisticated read call.
- *
- * @param r     TODO
- * @param fd    TODO
- * @param buffer TODO
- * @param int   TODO
- *
- * @return      TODO
+ * @return       number of bytes read on success
+ * @return       -1 on error, @c r->_errno set to a constant from errno.h to indicate the error
  */
-_ssize_t _read_r(struct _reent *r, int fd, void *buffer, size_t count)
+_ssize_t _read_r(struct _reent *r, int fd, void *dest, size_t count)
 {
-    (void)r;
-    (void)fd;
-    return uart_stdio_read(buffer, count);
+    int res = vfs_read(fd, dest, count);
+    if (res < 0) {
+        /* vfs returns negative error codes */
+        r->_errno = -res;
+        return -1;
+    }
+    return res;
 }
 
 /**
- * @brief Write characters to a file
+ * @brief Write bytes to an open file
  *
- * All output is currently directed to UART_0, independent of the given file descriptor.
- * The write call will further block until the byte is actually written to the UART.
+ * This is a wrapper around @c vfs_write
  *
- * TODO: implement more sophisticated write call.
+ * @param[in]  r      pointer to reent structure
+ * @param[in]  fd     open file descriptor obtained from @c open()
+ * @param[in]  src    source data buffer
+ * @param[in]  count  maximum number of bytes to write
  *
- * @param r     TODO
- * @param fd    TODO
- * @param data  TODO
- * @param int   TODO
- *
- * @return      TODO
+ * @return       number of bytes written on success
+ * @return       -1 on error, @c r->_errno set to a constant from errno.h to indicate the error
  */
-_ssize_t _write_r(struct _reent *r, int fd, const void *data, size_t count)
+_ssize_t _write_r(struct _reent *r, int fd, const void *src, size_t count)
 {
-    (void) r;
-    (void) fd;
-    return uart_stdio_write(data, count);
+    int res = vfs_write(fd, src, count);
+    if (res < 0) {
+        /* vfs returns negative error codes */
+        r->_errno = -res;
+        return -1;
+    }
+    return res;
 }
 
 /**
- * @brief Close a file
+ * @brief Close an open file
  *
- * @param r     TODO
- * @param fd    TODO
+ * This is a wrapper around @c vfs_close
  *
- * @return      TODO
+ * If this call returns an error, the fd should still be considered invalid and
+ * no further attempt to use it shall be made, not even to retry @c close()
+ *
+ * @param[in]  r      pointer to reent structure
+ * @param[in]  fd     open file descriptor obtained from @c open()
+ *
+ * @return       0 on success
+ * @return       -1 on error, @c r->_errno set to a constant from errno.h to indicate the error
  */
 int _close_r(struct _reent *r, int fd)
 {
-    (void) fd;
-    r->_errno = ENODEV;                     /* not implemented yet */
-    return -1;
+    int res = vfs_close(fd);
+    if (res < 0) {
+        /* vfs returns negative error codes */
+        r->_errno = -res;
+        return -1;
+    }
+    return res;
 }
 
 /**
- * @brief Set position in a file
+ * @brief Query or set options on an open file
  *
- * @param r     TODO
- * @param fd    TODO
- * @param pos   TODO
- * @param dir   TODO
+ * This is a wrapper around @c vfs_fcntl
  *
- * @return      TODO
+ * @param[in]  r      pointer to reent structure
+ * @param[in]  fd     open file descriptor obtained from @c open()
+ * @param[in]  cmd    fcntl command, see man 3p fcntl
+ * @param[in]  arg    argument to fcntl command, see man 3p fcntl
+ *
+ * @return       0 on success
+ * @return       -1 on error, @c r->_errno set to a constant from errno.h to indicate the error
  */
-_off_t _lseek_r(struct _reent *r, int fd, _off_t pos, int dir)
+int _fcntl_r (struct _reent *r, int fd, int cmd, int arg)
 {
-    (void) fd;
-    (void) pos;
-    (void) dir;
-    r->_errno = ENODEV;                     /* not implemented yet */
-    return -1;
+    int res = vfs_fcntl(fd, cmd, arg);
+    if (res < 0) {
+        /* vfs returns negative error codes */
+        r->_errno = -res;
+        return -1;
+    }
+    return res;
 }
 
 /**
- * @brief Status of an open file
+ * @brief Seek to position in file
  *
- * @param r     TODO
- * @param fd    TODO
- * @param stat  TODO
+ * This is a wrapper around @c vfs_lseek
  *
- * @return      TODO
+ * @p whence determines the function of the seek and should be set to one of
+ * the following values:
+ *
+ *  - @c SEEK_SET: Seek to absolute offset @p off
+ *  - @c SEEK_CUR: Seek to current location + @p off
+ *  - @c SEEK_END: Seek to end of file + @p off
+ *
+ * @param[in]  r        pointer to reent structure
+ * @param[in]  fd       open file descriptor obtained from @c open()
+ * @param[in]  off      seek offset
+ * @param[in]  whence   determines the seek method, see detailed description
+ *
+ * @return the new seek location in the file on success
+ * @return -1 on error, @c r->_errno set to a constant from errno.h to indicate the error
  */
-int _fstat_r(struct _reent *r, int fd, struct stat *st)
+_off_t _lseek_r(struct _reent *r, int fd, _off_t off, int whence)
 {
-    (void) fd;
-    (void) st;
-    r->_errno = ENODEV;                     /* not implemented yet */
-    return -1;
+    int res = vfs_lseek(fd, off, whence);
+    if (res < 0) {
+        /* vfs returns negative error codes */
+        r->_errno = -res;
+        return -1;
+    }
+    return res;
+}
+
+/**
+ * @brief Get status of an open file
+ *
+ * This is a wrapper around @c vfs_fstat
+ *
+ * @param[in]  r        pointer to reent structure
+ * @param[in]  fd       open file descriptor obtained from @c open()
+ * @param[out] buf      pointer to stat struct to fill
+ *
+ * @return 0 on success
+ * @return -1 on error, @c r->_errno set to a constant from errno.h to indicate the error
+ */
+int _fstat_r(struct _reent *r, int fd, struct stat *buf)
+{
+    int res = vfs_fstat(fd, buf);
+    if (res < 0) {
+        /* vfs returns negative error codes */
+        r->_errno = -res;
+        return -1;
+    }
+    return 0;
 }
 
 /**
@@ -303,18 +364,23 @@ int _isatty_r(struct _reent *r, int fd)
 }
 
 /**
- * @brief  Remove a file's directory entry
+ * @brief  Unlink (delete) a file
  *
- * @param r     TODO
- * @param path  TODO
+ * @param[in]  r        pointer to reent structure
+ * @param[in]  path     path to file to be deleted
  *
- * @return      TODO
+ * @return 0 on success
+ * @return -1 on error, @c r->_errno set to a constant from errno.h to indicate the error
  */
 int _unlink_r(struct _reent *r, const char *path)
 {
-    (void) path;
-    r->_errno = ENODEV;                     /* not implemented yet */
-    return -1;
+    int res = vfs_unlink(path);
+    if (res < 0) {
+        /* vfs returns negative error codes */
+        r->_errno = -res;
+        return -1;
+    }
+    return 0;
 }
 
 /**
