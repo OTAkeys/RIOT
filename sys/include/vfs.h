@@ -111,7 +111,10 @@ typedef struct {
     int flags;              /**< File flags */
     off_t pos;              /**< Current position in the file */
     kernel_pid_t pid;       /**< PID of the process that opened the file */
-    void *private_data;     /**< File system driver private data, implementation defined */
+    union {
+        void *ptr;     /**< File system driver private data, implementation defined */
+        int value;
+    } private_data;
 } vfs_file_t;
 
 /**

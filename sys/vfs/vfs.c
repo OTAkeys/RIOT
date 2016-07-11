@@ -565,7 +565,7 @@ inline static int _init_fd(int fd, const vfs_file_ops_t *f_op, vfs_mount_t *moun
     filp->f_op = f_op;
     filp->flags = flags;
     filp->pos = 0;
-    filp->private_data = private_data;
+    filp->private_data.ptr = private_data;
     return fd;
 }
 
