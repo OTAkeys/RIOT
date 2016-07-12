@@ -585,7 +585,7 @@ inline static int _allocate_mount(const char *mount_point)
                 _free_mount(md);
                 return -EINVAL;
             }
-            if (mountp->mount_point[len - 1] == '/') {
+            if ((len > 1) && (mountp->mount_point[len - 1] == '/')) {
                 /* remove trailing slash */
                 mountp->mount_point[len - 1] = '\0';
             }
