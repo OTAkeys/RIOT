@@ -621,7 +621,7 @@ inline static int _find_mount(const char *name, const char **rel_path)
             /* path name is shorter than the mount point name */
             continue;
         }
-        else if (name[len] != '/' && name[len] != '\0') {
+        else if ((len > 1) && (name[len] != '/') && (name[len] != '\0')) {
             /* name does not have a directory separator where mount point name ends */
             continue;
         }
