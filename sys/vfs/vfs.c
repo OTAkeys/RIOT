@@ -418,17 +418,20 @@ int vfs_unlink(const char *name)
     if ((mountp->fs->fs_op == NULL) || (mountp->fs->fs_op->unlink == NULL)) {
         /* unlink not supported */
         DEBUG("vfs_unlink: unlink not supported by fs!\n");
+        /* remember to decrement the open_files count */
+        atomic_dec(&mountp->open_files);
         return -EPERM;
     }
     int res = mountp->fs->fs_op->unlink(mountp, rel_path);
-    if (res < 0) {
+    if (ENABLE_DEBUG && (res < 0)) {
         /* something went wrong during unlink */
         DEBUG("vfs_unlink: unlink: ERR %d!\n", res);
-        /* remember to decrement the open_files count */
-        atomic_dec(&mountp->open_files);
-        return res;
     }
-    DEBUG("vfs_unlink: delete %d, \"%s\"\n", md, rel_path);
+    else {
+        DEBUG("vfs_unlink: delete %d, \"%s\"\n", md, rel_path);
+    }
+    /* remember to decrement the open_files count */
+    atomic_dec(&mountp->open_files);
     return res;
 }
 
