@@ -74,7 +74,7 @@ static vfs_file_ops_t uart_stdio_vfs_ops = {
 
 static ssize_t uart_stdio_vfs_read(vfs_file_t *filp, void *dest, size_t nbytes)
 {
-    int fd = (int)filp->private_data;
+    int fd = filp->private_data.value;
     if (fd != STDIN_FILENO) {
         return -EBADF;
     }
@@ -83,7 +83,7 @@ static ssize_t uart_stdio_vfs_read(vfs_file_t *filp, void *dest, size_t nbytes)
 
 static ssize_t uart_stdio_vfs_write(vfs_file_t *filp, const void *src, size_t nbytes)
 {
-    int fd = (int)filp->private_data;
+    int fd = filp->private_data.value;
     if (fd == STDIN_FILENO) {
         return -EBADF;
     }
