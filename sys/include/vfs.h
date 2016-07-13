@@ -85,7 +85,7 @@ extern "C" {
  * compiler error):
  *
  * @attention @code
- * #if VFS_DIR_BUFFER_SIZE < (sizeof(my_DIR))
+ * #if VFS_DIR_BUFFER_SIZE < 123
  * #error VFS_DIR_BUFFER_SIZE is too small, at least 123 bytes is required
  * #endif
  * @endcode
