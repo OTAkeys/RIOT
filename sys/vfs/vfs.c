@@ -344,6 +344,12 @@ int vfs_opendir(vfs_DIR *dirp, const char *dirname)
     }
     const char *rel_path;
     int md = _find_mount(dirname, &rel_path);
+    if (rel_path[0] == '\0') {
+        /* if the trailing slash is missing we will get an empty string back, to
+         * be consistent against the file system drivers we give the relative
+         * path "/" instead */
+        rel_path = "/";
+    }
     /* _find_mount implicitly increments the open_files count on success */
     if (md < 0) {
         /* No mount point maps to the requested file name */
@@ -512,7 +518,7 @@ int vfs_unlink(const char *name)
 
 int vfs_mkdir(const char *name, mode_t mode)
 {
-    DEBUG("vfs_mkdir: \"%s\", %04o\n", name, mode);
+    DEBUG("vfs_mkdir: \"%s\", %04lo\n", name, (long unsigned int)mode);
     if (name == NULL) {
         return -EINVAL;
     }
