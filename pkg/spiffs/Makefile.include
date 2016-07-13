@@ -1,4 +1,4 @@
-INCLUDES += -I$(RIOTPKG)/spiffs/src
+INCLUDES += -I$(RIOTPKG)/spiffs/include
 INCLUDES += -I$(BINDIRBASE)/pkg/$(BOARD)/spiffs/riotbuild/
 
 ifneq (,$(filter spiffs_fs,$(USEMODULE)))
