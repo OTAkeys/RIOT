@@ -35,7 +35,6 @@ static int constfs_opendir(vfs_DIR *dirp, const char *dirname, const char *abs_p
 static int constfs_readdir(vfs_DIR *dirp, vfs_dirent_t *entry);
 static int constfs_closedir(vfs_DIR *dirp);
 
-
 static const vfs_file_system_ops_t constfs_fs_ops = {
     .mount = constfs_mount,
     .umount = constfs_umount,
