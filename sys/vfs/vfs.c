@@ -333,6 +333,78 @@ ssize_t vfs_write(int fd, const void *src, size_t count)
     return filp->f_op->write(filp, src, count);
 }
 
+int vfs_opendir(vfs_DIR *dirp, const char *dirname)
+{
+    DEBUG("vfs_opendir: %p, \"%s\"\n", (void *)dirp, dirname);
+    if (dirp == NULL) {
+        return -EINVAL;
+    }
+    if (dirname == NULL) {
+        return -EINVAL;
+    }
+    const char *rel_path;
+    int md = _find_mount(dirname, &rel_path);
+    /* _find_mount implicitly increments the open_files count on success */
+    if (md < 0) {
+        /* No mount point maps to the requested file name */
+        DEBUG("vfs_open: no matching mount\n");
+        return md;
+    }
+    vfs_mount_t *mountp = &_vfs_mounts[md];
+    if (mountp->fs->d_op == NULL) {
+        /* file system driver does not support directories */
+        return -EINVAL;
+    }
+    /* initialize dirp */
+    memset(dirp, 0, sizeof(*dirp));
+    dirp->mp = mountp;
+    dirp->d_op = mountp->fs->d_op;
+    if (dirp->d_op->opendir != NULL) {
+        int res = dirp->d_op->opendir(dirp, rel_path, dirname);
+        if (res < 0) {
+            /* remember to decrement the open_files count */
+            atomic_dec(&mountp->open_files);
+            return res;
+        }
+    }
+    return 0;
+}
+
+int vfs_readdir(vfs_DIR *dirp, vfs_dirent_t *entry)
+{
+    DEBUG("vfs_readdir: %p, %p\n", (void *)dirp, (void *)entry);
+    if (dirp == NULL) {
+        return -EINVAL;
+    }
+    if (entry == NULL) {
+        return -EINVAL;
+    }
+    int res = -EINVAL;
+    if (dirp->d_op != NULL) {
+        if (dirp->d_op->readdir != NULL) {
+            res = dirp->d_op->readdir(dirp, entry);
+        }
+    }
+    return res;
+}
+
+int vfs_closedir(vfs_DIR *dirp)
+{
+    DEBUG("vfs_closedir: %p\n", (void *)dirp);
+    if (dirp == NULL) {
+        return -EINVAL;
+    }
+    int res = 0;
+    if (dirp->d_op != NULL) {
+        if (dirp->d_op->closedir != NULL) {
+            res = dirp->d_op->closedir(dirp);
+        }
+    }
+    vfs_mount_t *mountp = dirp->mp;
+    memset(dirp, 0, sizeof(*dirp));
+    atomic_dec(&mountp->open_files);
+    return res;
+}
 
 int vfs_mount(const vfs_file_system_t *fsp, const char *mount_point, void *private_data)
 {
@@ -400,6 +472,8 @@ int vfs_umount(int md)
     return 0;
 }
 
+/* TODO: Share code between vfs_unlink, vfs_mkdir, vfs_rmdir since they are almost identical */
+
 int vfs_unlink(const char *name)
 {
     DEBUG("vfs_unlink: \"%s\"\n", name);
@@ -423,12 +497,85 @@ int vfs_unlink(const char *name)
         return -EPERM;
     }
     int res = mountp->fs->fs_op->unlink(mountp, rel_path);
-    if (ENABLE_DEBUG && (res < 0)) {
+    DEBUG("vfs_unlink: unlink %d, \"%s\"", md, rel_path);
+    if (res < 0) {
         /* something went wrong during unlink */
-        DEBUG("vfs_unlink: unlink: ERR %d!\n", res);
+        DEBUG(": ERR %d!\n", res);
     }
     else {
-        DEBUG("vfs_unlink: delete %d, \"%s\"\n", md, rel_path);
+        DEBUG("\n");
+    }
+    /* remember to decrement the open_files count */
+    atomic_dec(&mountp->open_files);
+    return res;
+}
+
+int vfs_mkdir(const char *name, mode_t mode)
+{
+    DEBUG("vfs_mkdir: \"%s\", %04o\n", name, mode);
+    if (name == NULL) {
+        return -EINVAL;
+    }
+    const char *rel_path;
+    int md = _find_mount(name, &rel_path);
+    /* _find_mount implicitly increments the open_files count on success */
+    if (md < 0) {
+        /* No mount point maps to the requested file name */
+        DEBUG("vfs_mkdir: no matching mount\n");
+        return md;
+    }
+    vfs_mount_t *mountp = &_vfs_mounts[md];
+    if ((mountp->fs->fs_op == NULL) || (mountp->fs->fs_op->mkdir == NULL)) {
+        /* mkdir not supported */
+        DEBUG("vfs_mkdir: mkdir not supported by fs!\n");
+        /* remember to decrement the open_files count */
+        atomic_dec(&mountp->open_files);
+        return -EPERM;
+    }
+    int res = mountp->fs->fs_op->mkdir(mountp, rel_path, mode);
+    DEBUG("vfs_mkdir: mkdir %d, \"%s\"", md, rel_path);
+    if (res < 0) {
+        /* something went wrong during mkdir */
+        DEBUG(": ERR %d!\n", res);
+    }
+    else {
+        DEBUG("\n");
+    }
+    /* remember to decrement the open_files count */
+    atomic_dec(&mountp->open_files);
+    return res;
+}
+
+int vfs_rmdir(const char *name)
+{
+    DEBUG("vfs_rmdir: \"%s\"\n", name);
+    if (name == NULL) {
+        return -EINVAL;
+    }
+    const char *rel_path;
+    int md = _find_mount(name, &rel_path);
+    /* _find_mount implicitly increments the open_files count on success */
+    if (md < 0) {
+        /* No mount point maps to the requested file name */
+        DEBUG("vfs_rmdir: no matching mount\n");
+        return md;
+    }
+    vfs_mount_t *mountp = &_vfs_mounts[md];
+    if ((mountp->fs->fs_op == NULL) || (mountp->fs->fs_op->rmdir == NULL)) {
+        /* rmdir not supported */
+        DEBUG("vfs_rmdir: rmdir not supported by fs!\n");
+        /* remember to decrement the open_files count */
+        atomic_dec(&mountp->open_files);
+        return -EPERM;
+    }
+    int res = mountp->fs->fs_op->rmdir(mountp, rel_path);
+    DEBUG("vfs_rmdir: rmdir %d, \"%s\"", md, rel_path);
+    if (res < 0) {
+        /* something went wrong during rmdir */
+        DEBUG(": ERR %d!\n", res);
+    }
+    else {
+        DEBUG("\n");
     }
     /* remember to decrement the open_files count */
     atomic_dec(&mountp->open_files);
