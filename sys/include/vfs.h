@@ -399,6 +399,22 @@ struct vfs_file_system_ops {
     int (*umount) (vfs_mount_t *mountp);
 
     /**
+     * @brief Rename a file
+     *
+     * The file @p from_path will be renamed to @p to_path
+     *
+     * @note it is not possible to rename files across different file system
+     *
+     * @param[in]  mountp     file system mount to operate on
+     * @param[in]  from_path  absolute path to existing file
+     * @param[in]  to_path    absolute path to destination
+     *
+     * @return 0 on success
+     * @return <0 on error
+     */
+    int (*rename) (vfs_mount_t *mountp, const char *from_path, const char *to_path);
+
+    /**
      * @brief Unlink (delete) a file from the file system
      *
      * @param[in]  mountp  file system mount to operate on
@@ -582,6 +598,21 @@ int vfs_closedir(vfs_DIR *dirp);
  * @return <0 on error
  */
 int vfs_mount(const vfs_file_system_t *fsp, const char *mount_point, void *private_data);
+
+/**
+ * @brief Rename a file
+ *
+ * The file @p from_path will be renamed to @p to_path
+ *
+ * @note it is not possible to rename files across different file system
+ *
+ * @param[in]  from_path  absolute path to existing file
+ * @param[in]  to_path    absolute path to destination
+ *
+ * @return 0 on success
+ * @return <0 on error
+ */
+int vfs_rename(const char *from_path, const char *to_path);
 
 /**
  * @brief Unmount a mounted file system
