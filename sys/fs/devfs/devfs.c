@@ -57,7 +57,7 @@ static int devfs_open(vfs_file_t *filp, const char *name, int flags, int mode, c
         if (strcmp(node->path, name) == 0) {
             DEBUG("devfs_open: Found :)\n");
             /* Add private data from DevFS node */
-            filp->private_data = node->private_data;
+            filp->private_data.ptr = node->private_data;
             /* Replace f_op with the operations provided by the device driver */
             filp->f_op = node->f_op;
             break;
