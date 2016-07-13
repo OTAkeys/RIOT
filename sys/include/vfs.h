@@ -235,9 +235,9 @@ struct vfs_file_ops {
 };
 
 /**
- * @brief Operations on open files
+ * @brief Operations on mounted file systems
  *
- * Similar, but not equal, to struct file_operations in Linux
+ * Similar, but not equal, to struct super_operations in Linux
  */
 struct vfs_file_system_ops {
     /**
