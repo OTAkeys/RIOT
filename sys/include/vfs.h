@@ -98,11 +98,13 @@ extern "C" {
 
 #ifndef VFS_NAME_MAX
 /**
- * @brief Maximum length of the name in a @c vfs_dirent_t
+ * @brief Maximum length of the name in a @c vfs_dirent_t (not including terminating null)
+ *
+ * Maximum number of bytes in a filename (not including terminating null).
  *
  * Similar to the POSIX macro NAME_MAX
  */
-#define VFS_NAME_MAX (32)
+#define VFS_NAME_MAX (31)
 #endif
 
 /**
@@ -191,7 +193,7 @@ typedef struct {
  */
 typedef struct {
     ino_t d_ino; /**< file serial number, unique for the file system ("inode" in Linux) */
-    char  d_name[VFS_NAME_MAX]; /**< file name, relative to its containing directory */
+    char  d_name[VFS_NAME_MAX + 1]; /**< file name, relative to its containing directory */
 } vfs_dirent_t;
 
 /**
@@ -339,10 +341,16 @@ struct vfs_dir_ops {
      * @p entry will be populated with information about the next entry in the
      * directory stream @p dirp
      *
+     * If @p entry was updated successfully, @c readdir shall return 1.
+     *
+     * If the end of stream was reached, @c readdir shall return 0 and @p entry
+     * shall remain untouched.
+     *
      * @param[in]  dirp     pointer to open directory
      * @param[out] entry    directory entry information
      *
-     * @return 0 on success
+     * @return 1 if @p entry was updated
+     * @return 0 if @p dirp has reached the end of the directory index
      * @return <0 on error
      */
     int (*readdir) (vfs_DIR *dirp, vfs_dirent_t *entry);
