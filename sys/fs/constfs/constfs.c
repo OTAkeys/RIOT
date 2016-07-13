@@ -30,6 +30,12 @@ static int constfs_open(vfs_file_t *filp, const char *name, int flags, int mode,
 static ssize_t constfs_read(vfs_file_t *filp, void *dest, size_t nbytes);
 static ssize_t constfs_write(vfs_file_t *filp, const void *src, size_t nbytes);
 
+/* Directory operations */
+static int constfs_opendir(vfs_DIR *dirp, const char *dirname, const char *abs_path);
+static int constfs_readdir(vfs_DIR *dirp, vfs_dirent_t *entry);
+static int constfs_closedir(vfs_DIR *dirp);
+
+
 static const vfs_file_system_ops_t constfs_fs_ops = {
     .mount = constfs_mount,
     .umount = constfs_umount,
@@ -45,9 +51,17 @@ static const vfs_file_ops_t constfs_file_ops = {
     .write = constfs_write,
 };
 
+static const vfs_dir_ops_t constfs_dir_ops = {
+    .opendir = constfs_opendir,
+    .readdir = constfs_readdir,
+    .closedir = constfs_closedir,
+};
+
+
 const vfs_file_system_t constfs_file_system = {
     .f_op = &constfs_file_ops,
     .fs_op = &constfs_fs_ops,
+    .d_op = &constfs_dir_ops,
 };
 
 static int constfs_mount(vfs_mount_t *mountp)
@@ -164,3 +178,50 @@ static ssize_t constfs_write(vfs_file_t *filp, const void *src, size_t nbytes)
     return -EBADF;
 }
 
+static int constfs_opendir(vfs_DIR *dirp, const char *dirname, const char *abs_path)
+{
+    DEBUG("constfs_opendir: %p, \"%s\", \"%s\"\n", (void *)dirp, dirname, abs_path);
+    if (strncmp(dirname, "/", 2) != 0) {
+        /* We keep it simple and only support a flat file system, only a root directory */
+        return -ENOENT;
+    }
+    dirp->private_data.value = 0;
+    return 0;
+}
+
+static int constfs_readdir(vfs_DIR *dirp, vfs_dirent_t *entry)
+{
+    DEBUG("constfs_readdir: %p, %p\n", (void *)dirp, (void *)entry);
+    constfs_t *fs = dirp->mp->private_data;
+    int filenum = dirp->private_data.value;
+    if ((size_t)filenum >= fs->nfiles) {
+        /* End of stream */
+        return 0;
+    }
+    const constfs_file_t *fp = &fs->files[filenum];
+    if (fp->path == NULL) {
+        return -EIO;
+    }
+    size_t len = strnlen(fp->path, VFS_NAME_MAX + 1);
+    if (len > VFS_NAME_MAX) {
+        /* name does not fit in vfs_dirent_t buffer */
+        /* skipping past the broken entry */
+        ++filenum;
+        dirp->private_data.value = filenum;
+        return -EAGAIN;
+    }
+    /* copy the string, including terminating null */
+    memcpy(&entry->d_name[0], fp->path, len + 1);
+    entry->d_ino = filenum;
+    ++filenum;
+    dirp->private_data.value = filenum;
+    return 1;
+}
+
+static int constfs_closedir(vfs_DIR *dirp)
+{
+    /* Just an example, it's not necessary to define closedir if there is
+     * nothing to clean up */
+    (void) dirp;
+    return 0;
+}
