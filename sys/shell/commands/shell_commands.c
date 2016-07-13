@@ -131,6 +131,7 @@ extern int _ccnl_fib(int argc, char **argv);
 
 #ifdef MODULE_VFS
 extern int _vfs_handler(int argc, char **argv);
+extern int _ls_handler(int argc, char **argv);
 #endif
 
 const shell_command_t _shell_command_list[] = {
@@ -220,6 +221,7 @@ const shell_command_t _shell_command_list[] = {
 #endif
 #ifdef MODULE_VFS
     {"vfs", "read files", _vfs_handler},
+    {"ls", "list files", _ls_handler},
 #endif
     {NULL, NULL, NULL}
 };

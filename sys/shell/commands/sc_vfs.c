@@ -18,7 +18,7 @@
  * @}
  */
 
-#ifdef BOARD_MULLE
+#if MODULE_VFS
 #include <stdint.h>
 #include <inttypes.h>
 #include <stdlib.h>
@@ -31,7 +31,13 @@
 
 #include "vfs.h"
 
-static void _usage(char **argv)
+static void _ls_usage(char **argv)
+{
+    printf("%s <path>\n", argv[0]);
+    puts("list files in <path>");
+}
+
+static void _vfs_usage(char **argv)
 {
     printf("%s <r|w> <path> [bytes] [offset]\n", argv[0]);
     puts("r: Read [bytes] bytes at [offset] in file <path>");
@@ -81,9 +87,8 @@ static int _errno_string(int err, char *buf, size_t buflen)
 
 int _vfs_handler(int argc, char **argv)
 {
-    printf("vfs: %d, %p\n", argc, (void *)argv);
     if (argc < 3) {
-        _usage(argv);
+        _vfs_usage(argv);
         return 1;
     }
     if (strcmp(argv[1], "r") != 0) {
@@ -113,7 +118,7 @@ int _vfs_handler(int argc, char **argv)
     int res;
     res = vfs_lseek(fd, offset, SEEK_SET);
     if (res < 0) {
-        _errno_string(fd, (char *)buf, sizeof(buf));
+        _errno_string(res, (char *)buf, sizeof(buf));
         printf("Seek error: %s\n", buf);
         vfs_close(fd);
         return 4;
@@ -123,7 +128,7 @@ int _vfs_handler(int argc, char **argv)
         size_t line_len = (nbytes < sizeof(buf) ? nbytes : sizeof(buf));
         res = vfs_read(fd, buf, line_len);
         if (res < 0) {
-            _errno_string(fd, (char *)buf, sizeof(buf));
+            _errno_string(res, (char *)buf, sizeof(buf));
             printf("Read error: %s\n", buf);
             vfs_close(fd);
             return 5;
@@ -161,6 +166,45 @@ int _vfs_handler(int argc, char **argv)
     }
 
     vfs_close(fd);
+    return 0;
+}
+
+int _ls_handler(int argc, char **argv)
+{
+    if (argc < 2) {
+        _ls_usage(argv);
+        return 1;
+    }
+    vfs_DIR dir;
+    uint8_t buf[16];
+    int res = vfs_opendir(&dir, argv[1]);
+    if (res < 0) {
+        _errno_string(res, (char *)buf, sizeof(buf));
+        printf("vfs_opendir error: %s\n", buf);
+        return 1;
+    }
+    unsigned int nfiles = 0;
+
+    while (1) {
+        vfs_dirent_t entry;
+        res = vfs_readdir(&dir, &entry);
+        if (res < 0) {
+            _errno_string(res, (char *)buf, sizeof(buf));
+            printf("vfs_opendir error: %s\n", buf);
+            if (res == -EAGAIN) {
+                /* try again */
+                continue;
+            }
+            return 1;
+        }
+        if (res == 0) {
+            /* end of stream */
+            break;
+        }
+        printf("%s\n", entry.d_name);
+        ++nfiles;
+    }
+    printf("total %u files\n", nfiles);
     return 0;
 }
 #endif
