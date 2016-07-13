@@ -415,7 +415,11 @@ int vfs_closedir(vfs_DIR *dirp)
 int vfs_mount(const vfs_file_system_t *fsp, const char *mount_point, void *private_data)
 {
     DEBUG("vfs_mount: %p, \"%s\" (%p), %p\n", (void *)fsp, mount_point, (void *)mount_point, private_data);
-    if (fsp == NULL) {
+    if ((fsp == NULL) || (mount_point == NULL)) {
+        return -EINVAL;
+    }
+    if (mount_point[0] != '/') {
+        DEBUG("vfs_mount: not absolute mount_point path\n");
         return -EINVAL;
     }
     mutex_lock(&_mount_mutex);
@@ -665,12 +669,12 @@ int vfs_normalize_path(char *buf, const char *path, size_t buflen)
     DEBUG("vfs_normalize_path: %p, \"%s\" (%p), %lu\n", buf, path, path, (unsigned long)buflen);
     size_t len = 0;
     int npathcomp = 0;
-    const char *path_end = path + strlen(path) + 1;
+    const char *path_end = path + strlen(path); /* Find the terminating null byte */
     if (len >= buflen) {
         return -ENAMETOOLONG;
     }
 
-    while(path < path_end) {
+    while(path <= path_end) {
         DEBUG("vfs_normalize_path: + %d \"%.*s\" <- \"%s\" (%p)\n", npathcomp, len, buf, path, path);
         if (path[0] == '\0') {
             break;
