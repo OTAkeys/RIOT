@@ -193,10 +193,12 @@ struct vfs_file_ops {
      *
      * The VFS layer will initialize the contents of @p *filp so that
      * @c filp->f_op points to the mounted file system's @c vfs_file_ops_t.
-     * @c filp->private_data will be initialized to NULL, @c filp->pos will be set to 0.
+     * @c filp->private_data.ptr will be initialized to NULL, @c filp->pos will
+     * be set to 0.
      *
      * @note @p name is an absolute path inside the file system, @p abs_path is
-     * the path to the file in the VFS, example: @p abs_path = "/mnt/hd/foo/bar", @p name = "/foo/bar"
+     * the path to the file in the VFS, example:
+     * @p abs_path = "/mnt/hd/foo/bar", @p name = "/foo/bar"
      *
      * @note @p name and @p abs_path may point to different locations within the
      * same const char array and the strings may overlap
