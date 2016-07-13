@@ -148,38 +148,29 @@ static int _open(vfs_file_t *filp, const char *name, int flags, int mode, const 
     (void) abs_path;
     DEBUG("spiffs: open: private_data = 0x%p\n", filp->mp->private_data);
 
-    spiffs_flags s_flags = 0;
+    spiffs_flags s_flags = SPIFFS_O_RDONLY;
     if (flags & O_APPEND) {
         s_flags |= SPIFFS_O_APPEND;
-        DEBUG("spiffs: open: flag O_APPEND %d\n", s_flags);
     }
     if (flags & O_TRUNC) {
         s_flags |= SPIFFS_O_TRUNC;
-        DEBUG("spiffs: open: flag O_TRUNC %d\n", s_flags);
     }
     if (flags & O_CREAT) {
         s_flags |= SPIFFS_O_CREAT;
-        DEBUG("spiffs: open: flag O_CREAT %d\n", s_flags);
-    }
-    if (flags & O_RDONLY) {
-        s_flags |= SPIFFS_O_RDONLY;
-        DEBUG("spiffs: open: flag O_RDONLY %d\n", s_flags);
     }
     if (flags & O_WRONLY) {
         s_flags |= SPIFFS_O_WRONLY;
-        DEBUG("spiffs: open: flag O_WRONLY %d\n", s_flags);
     }
     if (flags & O_RDWR) {
         s_flags |= SPIFFS_O_RDWR;
-        DEBUG("spiffs: open: flag O_RDWR %d\n", s_flags);
     }
+#ifdef __O_DIRECT
     if (flags & __O_DIRECT) {
         s_flags |= SPIFFS_O_DIRECT;
-        DEBUG("spiffs: open: flag __O_DIRECT %d\n", s_flags);
     }
+#endif
     if (flags & O_EXCL) {
         s_flags |= SPIFFS_O_EXCL;
-        DEBUG("spiffs: open: flag O_EXCL %d\n", s_flags);
     }
 
     DEBUG("spiffs: open: %s (abs_path: %s), flags: 0x%x, mode: %d\n", name, abs_path, s_flags, mode);
