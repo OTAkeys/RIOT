@@ -61,6 +61,12 @@ static void test_vfs_mount_umount(void)
     TEST_ASSERT(res >= 0);
 }
 
+static void test_vfs_mount__invalid_path(void)
+{
+    int md = vfs_mount(&constfs_file_system, "test", (void *)&fs);
+    TEST_ASSERT(md < 0);
+}
+
 static void test_vfs_umount__invalid_md(void)
 {
     int res;
@@ -164,6 +170,7 @@ Test *tests_vfs_mount_constfs_tests(void)
 {
     EMB_UNIT_TESTFIXTURES(fixtures) {
         new_TestFixture(test_vfs_mount_umount),
+        new_TestFixture(test_vfs_mount__invalid_path),
         new_TestFixture(test_vfs_umount__invalid_md),
         new_TestFixture(test_vfs_constfs_open),
         new_TestFixture(test_vfs_constfs_read),
