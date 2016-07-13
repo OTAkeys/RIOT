@@ -8,6 +8,8 @@
 #ifndef SPIFFS_CONFIG_H_
 #define SPIFFS_CONFIG_H_
 
+#include "board.h"
+
 // ----------- 8< ------------
 // Following includes are for the linux test build of spiffs
 // These may/should/must be removed/altered/replaced in your target
@@ -18,7 +20,7 @@
 #include <unistd.h>
 #include <stdint.h>
 
-#define ENABLE_DEBUG (1)
+#define ENABLE_DEBUG (0)
 #include <debug.h>
 
 // ----------- >8 ------------
@@ -27,11 +29,11 @@
 
 // Set generic spiffs debug output call.
 #ifndef SPIFFS_DBG
-#define SPIFFS_DBG(...) DEBUG(__VA_ARGS__)
+#define SPIFFS_DBG(...) //DEBUG(__VA_ARGS__)
 #endif
 // Set spiffs debug output call for garbage collecting.
 #ifndef SPIFFS_GC_DBG
-#define SPIFFS_GC_DBG(...) DEBUG(__VA_ARGS__)
+#define SPIFFS_GC_DBG(...) //DEBUG(__VA_ARGS__)
 #endif
 // Set spiffs debug output call for caching.
 #ifndef SPIFFS_CACHE_DBG
@@ -39,7 +41,7 @@
 #endif
 // Set spiffs debug output call for system consistency checks.
 #ifndef SPIFFS_CHECK_DBG
-#define SPIFFS_CHECK_DBG(...) DEBUG(__VA_ARGS__)
+#define SPIFFS_CHECK_DBG(...) //DEBUG(__VA_ARGS__)
 #endif
 
 // Enable/disable API functions to determine exact number of bytes
