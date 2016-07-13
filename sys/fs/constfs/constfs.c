@@ -81,7 +81,7 @@ static int constfs_close(vfs_file_t *filp)
 
 static int constfs_fstat(vfs_file_t *filp, struct stat *buf)
 {
-    constfs_file_t *fp = filp->private_data;
+    constfs_file_t *fp = filp->private_data.ptr;
     if (buf == NULL) {
         return -EFAULT;
     }
@@ -92,7 +92,7 @@ static int constfs_fstat(vfs_file_t *filp, struct stat *buf)
 
 static off_t constfs_lseek(vfs_file_t *filp, off_t off, int whence)
 {
-    constfs_file_t *fp = filp->private_data;
+    constfs_file_t *fp = filp->private_data.ptr;
     switch (whence) {
         case SEEK_SET:
             break;
@@ -127,7 +127,7 @@ static int constfs_open(vfs_file_t *filp, const char *name, int flags, int mode,
         DEBUG("constfs_open ? \"%s\"\n", fs->files[i].path);
         if (strcmp(fs->files[i].path, name) == 0) {
             DEBUG("constfs_open: Found :)\n");
-            filp->private_data = (void *)&fs->files[i];
+            filp->private_data.ptr = (void *)&fs->files[i];
             return 0;
         }
     }
@@ -137,7 +137,7 @@ static int constfs_open(vfs_file_t *filp, const char *name, int flags, int mode,
 
 static ssize_t constfs_read(vfs_file_t *filp, void *dest, size_t nbytes)
 {
-    constfs_file_t *fp = filp->private_data;
+    constfs_file_t *fp = filp->private_data.ptr;
     DEBUG("constfs_read: %p, %p, %lu\n", (void *)filp, dest, (unsigned long)nbytes);
     if ((size_t)filp->pos >= fp->size) {
         /* Current offset is at or beyond end of file */
