@@ -42,7 +42,7 @@ static vfs_file_ops_t _test_bind_ops = {
 
 static ssize_t _mock_write(vfs_file_t *filp, const void *src, size_t nbytes)
 {
-    void *dest = filp->private_data;
+    void *dest = filp->private_data.ptr;
     ++_mock_write_calls;
     if (nbytes > _VFS_TEST_BIND_BUFSIZE) {
         nbytes = _VFS_TEST_BIND_BUFSIZE;
@@ -53,7 +53,7 @@ static ssize_t _mock_write(vfs_file_t *filp, const void *src, size_t nbytes)
 
 static ssize_t _mock_read(vfs_file_t *filp, void *dest, size_t nbytes)
 {
-    void *src = filp->private_data;
+    void *src = filp->private_data.ptr;
     ++_mock_read_calls;
     if (nbytes > _VFS_TEST_BIND_BUFSIZE) {
         nbytes = _VFS_TEST_BIND_BUFSIZE;
