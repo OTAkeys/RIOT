@@ -478,6 +478,61 @@ int vfs_umount(int md)
     return 0;
 }
 
+int vfs_rename(const char *from_path, const char *to_path)
+{
+    DEBUG("vfs_rename: \"%s\", \"%s\"\n", from_path, to_path);
+    if ((from_path == NULL) || (to_path == NULL)) {
+        return -EINVAL;
+    }
+    const char *rel_from;
+    int md_from = _find_mount(from_path, &rel_from);
+    /* _find_mount implicitly increments the open_files count on success */
+    if (md_from < 0) {
+        /* No mount point maps to the requested file name */
+        DEBUG("vfs_rename: from: no matching mount\n");
+        return md_from;
+    }
+    vfs_mount_t *mountp = &_vfs_mounts[md_from];
+    if ((mountp->fs->fs_op == NULL) || (mountp->fs->fs_op->rename == NULL)) {
+        /* rename not supported */
+        DEBUG("vfs_rename: rename not supported by fs!\n");
+        /* remember to decrement the open_files count */
+        atomic_dec(&mountp->open_files);
+        return -EPERM;
+    }
+    const char *rel_to;
+    int md_to = _find_mount(to_path, &rel_to);
+    /* _find_mount implicitly increments the open_files count on success */
+    if (md_to < 0) {
+        /* No mount point maps to the requested file name */
+        DEBUG("vfs_rename: to: no matching mount\n");
+        /* remember to decrement the open_files count */
+        atomic_dec(&mountp->open_files);
+        return md_to;
+    }
+    /* we decrement the open_files count once, since we're really only using one file */
+    atomic_dec(&mountp->open_files);
+    if (md_to != md_from) {
+        /* The paths are on different file systems */
+        DEBUG("vfs_rename: from_path and to_path are on different mounts\n");
+        /* remember to decrement the open_files count */
+        atomic_dec(&mountp->open_files);
+        return -EXDEV;
+    }
+    int res = mountp->fs->fs_op->rename(mountp, rel_from, rel_to);
+    DEBUG("vfs_rename: rename %d, \"%s\" -> \"%s\"", md_from, rel_from, rel_to);
+    if (res < 0) {
+        /* something went wrong during rename */
+        DEBUG(": ERR %d!\n", res);
+    }
+    else {
+        DEBUG("\n");
+    }
+    /* remember to decrement the open_files count */
+    atomic_dec(&mountp->open_files);
+    return res;
+}
+
 /* TODO: Share code between vfs_unlink, vfs_mkdir, vfs_rmdir since they are almost identical */
 
 int vfs_unlink(const char *name)
