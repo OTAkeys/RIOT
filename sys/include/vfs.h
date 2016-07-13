@@ -65,6 +65,46 @@ extern "C" {
 #define VFS_MOUNT_POINT_LEN (8)
 #endif
 
+#ifndef VFS_DIR_BUFFER_SIZE
+/**
+ * @brief Size of buffer space in vfs_DIR
+ *
+ * This space is needed to avoid dynamic memory allocations for some file
+ * systems where a single pointer is not enough space for its directory stream
+ * state, e.g. SPIFFS.
+ *
+ * Guidelines:
+ *
+ * SPIFFS requires a sizeof(spiffs_DIR) (6-16 bytes, depending on target
+ * platform and configuration) buffer for its DIR struct.
+ *
+ * @attention File system developers: If your file system requires a buffer for
+ * DIR streams that is larger than a single pointer or @c int variable, ensure
+ * that you have a preprocessor check in your header file (so that it is
+ * impossible to attempt to mount the file system without running into a
+ * compiler error):
+ *
+ * @attention @code
+ * #if VFS_DIR_BUFFER_SIZE < (sizeof(my_DIR))
+ * #error VFS_DIR_BUFFER_SIZE is too small, at least 123 bytes is required
+ * #endif
+ * @endcode
+ *
+ * @attention Put the check in the public header file (.h), do not put the check in the
+ * implementation (.c) file.
+ */
+#define VFS_DIR_BUFFER_SIZE (12)
+#endif
+
+#ifndef VFS_NAME_MAX
+/**
+ * @brief Maximum length of the name in a @c vfs_dirent_t
+ *
+ * Similar to the POSIX macro NAME_MAX
+ */
+#define VFS_NAME_MAX (32)
+#endif
+
 /**
  * @brief Used with vfs_bind to bind to any available fd number
  */
@@ -76,6 +116,11 @@ struct vfs_file_ops;
  * @brief struct @c vfs_file_ops typedef
  */
 typedef struct vfs_file_ops vfs_file_ops_t;
+struct vfs_dir_ops;
+/**
+ * @brief struct @c vfs_dir_ops typedef
+ */
+typedef struct vfs_dir_ops vfs_dir_ops_t;
 struct vfs_file_system_ops;
 /**
  * @brief struct @c vfs_file_system_ops typedef
@@ -87,6 +132,7 @@ typedef struct vfs_file_system_ops vfs_file_system_ops_t;
  */
 typedef struct {
     const vfs_file_ops_t *f_op;         /**< File operations table */
+    const vfs_dir_ops_t *d_op;          /**< Directory operations table */
     const vfs_file_system_ops_t *fs_op; /**< File system operations table */
 } vfs_file_system_t;
 
@@ -106,16 +152,47 @@ typedef struct {
  * Similar, but not equal, to struct file in Linux
  */
 typedef struct {
-    const vfs_file_ops_t *f_op;   /**< File operations table */
-    vfs_mount_t *mp;        /**< Pointer to mount table entry */
-    int flags;              /**< File flags */
-    off_t pos;              /**< Current position in the file */
-    kernel_pid_t pid;       /**< PID of the process that opened the file */
+    const vfs_file_ops_t *f_op; /**< File operations table */
+    vfs_mount_t *mp;            /**< Pointer to mount table entry */
+    int flags;                  /**< File flags */
+    off_t pos;                  /**< Current position in the file */
+    kernel_pid_t pid;           /**< PID of the process that opened the file */
     union {
-        void *ptr;     /**< File system driver private data, implementation defined */
-        int value;
-    } private_data;
+        void *ptr;              /**< pointer to private data */
+        int value;              /**< alternatively, you can use private_data as an int */
+    } private_data;             /**< File system driver private data, implementation defined */
 } vfs_file_t;
+
+/**
+ * @brief A directory entry
+ *
+ * Used by opendir, readdir, closedir
+ *
+ * @attention This structure should be treated as an opaque blob and must not be
+ * modified by user code. The contents should only be used by file system drivers.
+ */
+typedef struct {
+    const vfs_dir_ops_t *d_op; /**< Directory operations table */
+    vfs_mount_t *mp;           /**< Pointer to mount table entry */
+    union {
+        void *ptr;             /**< pointer to private data */
+        int value;             /**< alternatively, you can use private_data as an int */
+        uint8_t buffer[VFS_DIR_BUFFER_SIZE]; /**< Buffer space, in case a single pointer is not enough */
+    } private_data;            /**< File system driver private data, implementation defined */
+} vfs_DIR;
+
+/**
+ * @brief A directory entry
+ *
+ * Used to hold the output from readdir
+ *
+ * @note size, modification time, and other information is part of the file
+ * status, not the directory entry.
+ */
+typedef struct {
+    ino_t d_ino; /**< file serial number, unique for the file system ("inode" in Linux) */
+    char  d_name[VFS_NAME_MAX]; /**< file name, relative to its containing directory */
+} vfs_dirent_t;
 
 /**
  * @brief Operations on open files
@@ -240,6 +317,48 @@ struct vfs_file_ops {
 };
 
 /**
+ * @brief Operations on open directories
+ */
+struct vfs_dir_ops {
+    /**
+     * @brief Open a directory for reading with readdir
+     *
+     * @param[in]  dirp     pointer to open directory
+     * @param[in]  name     null-terminated name of the dir to open, relative to the file system root, including a leading slash
+     * @param[in]  abs_path null-terminated name of the dir to open, relative to the VFS root ("/")
+     *
+     * @return 0 on success
+     * @return <0 on error
+     */
+    int (*opendir) (vfs_DIR *dirp, const char *dirname, const char *abs_path);
+
+    /**
+     * @brief Read a single entry from the open directory dirp and advance the
+     * read position by one
+     *
+     * @p entry will be populated with information about the next entry in the
+     * directory stream @p dirp
+     *
+     * @param[in]  dirp     pointer to open directory
+     * @param[out] entry    directory entry information
+     *
+     * @return 0 on success
+     * @return <0 on error
+     */
+    int (*readdir) (vfs_DIR *dirp, vfs_dirent_t *entry);
+
+    /**
+     * @brief Close an open directory
+     *
+     * @param[in]  dirp     pointer to open directory
+     *
+     * @return 0 on success
+     * @return <0 on error, the directory stream dirp should be considered invalid
+     */
+    int (*closedir) (vfs_DIR *dirp);
+};
+
+/**
  * @brief Operations on mounted file systems
  *
  * Similar, but not equal, to struct super_operations in Linux
@@ -254,7 +373,7 @@ struct vfs_file_system_ops {
      * All fields of @p mountp will be initialized by vfs_mount beforehand,
      * @c private_data will be initialized to NULL.
      *
-     * @param[in]  mountp  The file system mount being mounted
+     * @param[in]  mountp  file system mount being mounted
      *
      * @return 0 on success
      * @return <0 on error
@@ -264,7 +383,7 @@ struct vfs_file_system_ops {
     /**
      * @brief Perform the necessary clean up for unmounting a file system
      *
-     * @param[in]  mountp  The file system mount being unmounted
+     * @param[in]  mountp  file system mount being unmounted
      *
      * @return 0 on success
      * @return <0 on error
@@ -274,13 +393,38 @@ struct vfs_file_system_ops {
     /**
      * @brief Unlink (delete) a file from the file system
      *
-     * @param[in]  mountp  The file system mount to operate on
-     * @param[in]  name    The name of the file to delete
+     * @param[in]  mountp  file system mount to operate on
+     * @param[in]  name    name of the file to delete
      *
      * @return 0 on success
      * @return <0 on error
      */
     int (*unlink) (vfs_mount_t *mountp, const char *name);
+
+    /**
+     * @brief Create a directory on the file system
+     *
+     * @param[in]  mountp  file system mount to operate on
+     * @param[in]  name    name of the directory to create
+     * @param[in]  mode    file creation mode bits
+     *
+     * @return 0 on success
+     * @return <0 on error
+     */
+    int (*mkdir) (vfs_mount_t *mountp, const char *name, mode_t mode);
+
+    /**
+     * @brief Remove a directory from the file system
+     *
+     * Only empty directories may be removed.
+     *
+     * @param[in]  mountp  file system mount to operate on
+     * @param[in]  name    name of the directory to remove
+     *
+     * @return 0 on success
+     * @return <0 on error
+     */
+    int (*rmdir) (vfs_mount_t *mountp, const char *name);
 };
 
 /**
@@ -372,6 +516,50 @@ ssize_t vfs_read(int fd, void *dest, size_t count);
 ssize_t vfs_write(int fd, const void *src, size_t count);
 
 /**
+ * @brief Open a directory for reading with readdir
+ *
+ * The data in @c *dirp will be initialized by @c vfs_opendir
+ *
+ * @param[out] dirp     pointer to directory stream struct for storing the state
+ * @param[in]  dirname  null-terminated name of the dir to open, absolute file system path
+ *
+ * @return 0 on success
+ * @return <0 on error
+ */
+int vfs_opendir(vfs_DIR *dirp, const char *dirname);
+
+/**
+ * @brief Read a single entry from the open directory dirp and advance the
+ * read position by one
+ *
+ * @p entry will be populated with information about the next entry in the
+ * directory stream @p dirp
+ *
+ * @attention Calling vfs_readdir on an uninitialized @c vfs_DIR is forbidden
+ * and may lead to file system corruption and random system failures.
+ *
+ * @param[in]  dirp     pointer to open directory
+ * @param[out] entry    directory entry information
+ *
+ * @return 0 on success
+ * @return <0 on error
+ */
+int vfs_readdir(vfs_DIR *dirp, vfs_dirent_t *entry);
+
+/**
+ * @brief Close an open directory
+ *
+ * @attention Calling vfs_closedir on an uninitialized @c vfs_DIR is forbidden
+ * and may lead to file system corruption and random system failures.
+ *
+ * @param[in]  dirp     pointer to open directory
+ *
+ * @return 0 on success
+ * @return <0 on error, the directory stream dirp should be considered invalid
+ */
+int vfs_closedir(vfs_DIR *dirp);
+
+/**
  * @brief Mount a file system
  *
  * @note fsp will only be shallow copied. Therefore, do not reuse the same
@@ -408,6 +596,29 @@ int vfs_umount(int md);
  * @return <0 on error
  */
 int vfs_unlink(const char *name);
+
+/**
+ * @brief Create a directory on the file system
+ *
+ * @param[in]  name    name of the directory to create
+ * @param[in]  mode    file creation mode bits
+ *
+ * @return 0 on success
+ * @return <0 on error
+ */
+int vfs_mkdir(const char *name, mode_t mode);
+
+/**
+ * @brief Remove a directory from the file system
+ *
+ * Only empty directories may be removed.
+ *
+ * @param[in]  name    name of the directory to remove
+ *
+ * @return 0 on success
+ * @return <0 on error
+ */
+int vfs_rmdir(const char *name);
 
 /**
  * @brief Allocate a new file descriptor and give it file operations
