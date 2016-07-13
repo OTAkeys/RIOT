@@ -49,7 +49,7 @@ static int nvram_vfs_fstat(vfs_file_t *filp, struct stat *buf)
     if (buf == NULL) {
         return -EFAULT;
     }
-    nvram_t *dev = filp->private_data;
+    nvram_t *dev = filp->private_data.ptr;
     if (dev == NULL) {
         return -EFAULT;
     }
@@ -60,7 +60,7 @@ static int nvram_vfs_fstat(vfs_file_t *filp, struct stat *buf)
 
 static off_t nvram_vfs_lseek(vfs_file_t *filp, off_t off, int whence)
 {
-    nvram_t *dev = filp->private_data;
+    nvram_t *dev = filp->private_data.ptr;
     if (dev == NULL) {
         return -EFAULT;
     }
@@ -87,7 +87,7 @@ static off_t nvram_vfs_lseek(vfs_file_t *filp, off_t off, int whence)
 
 static ssize_t nvram_vfs_read(vfs_file_t *filp, void *dest, size_t nbytes)
 {
-    nvram_t *dev = filp->private_data;
+    nvram_t *dev = filp->private_data.ptr;
     if (dev == NULL) {
         return -EFAULT;
     }
@@ -109,7 +109,7 @@ static ssize_t nvram_vfs_read(vfs_file_t *filp, void *dest, size_t nbytes)
 
 static ssize_t nvram_vfs_write(vfs_file_t *filp, const void *src, size_t nbytes)
 {
-    nvram_t *dev = filp->private_data;
+    nvram_t *dev = filp->private_data.ptr;
     if (dev == NULL) {
         return -EFAULT;
     }
