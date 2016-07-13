@@ -52,7 +52,7 @@ static int _mock_open(vfs_file_t *filp, const char *name, int flags, int mode, c
     (void) flags;
     (void) mode;
     (void) abs_path;
-    if (filp->private_data != &_mock_private_data_tag) {
+    if (filp->private_data.ptr != &_mock_private_data_tag) {
         return -4321;
     }
     int *np = filp->mp->private_data;
@@ -65,7 +65,7 @@ static ssize_t _mock_read(vfs_file_t *filp, void *dest, size_t nbytes)
 {
     (void) dest;
     (void) nbytes;
-    if (filp->private_data != &_mock_private_data_tag) {
+    if (filp->private_data.ptr != &_mock_private_data_tag) {
         return -4321;
     }
     int *np = filp->mp->private_data;
@@ -78,7 +78,7 @@ static ssize_t _mock_write(vfs_file_t *filp, const void *src, size_t nbytes)
 {
     (void) src;
     (void) nbytes;
-    if (filp->private_data != &_mock_private_data_tag) {
+    if (filp->private_data.ptr != &_mock_private_data_tag) {
         return -4321;
     }
     int *np = filp->mp->private_data;
