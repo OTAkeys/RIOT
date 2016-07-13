@@ -256,11 +256,66 @@ static int _fstat(vfs_file_t *filp, struct stat *buf)
     return spiffs_err_to_errno(ret);
 }
 
+static int _opendir(vfs_DIR *dirp, const char *dirname, const char *abs_path)
+{
+    spiffs_desc_t *fs_desc = dirp->mp->private_data;
+    spiffs_DIR d;
+    (void) abs_path;
+
+    if (VFS_DIR_BUFFER_SIZE < sizeof(spiffs_DIR)) {
+        return -EOVERFLOW;
+    }
+
+    SPIFFS_opendir(&fs_desc->fs, dirname, &d);
+    memcpy(dirp->private_data.buffer, &d, sizeof(d));
+
+    return 0;
+}
+
+static int _readdir(vfs_DIR *dirp, vfs_dirent_t *entry)
+{
+    spiffs_DIR d;
+    struct spiffs_dirent e;
+    struct spiffs_dirent *ret;
+
+    memcpy(&d, dirp->private_data.buffer, sizeof(d));
+
+    ret = SPIFFS_readdir(&d, &e);
+    memcpy(dirp->private_data.buffer, &d, sizeof(d));
+    if (ret == NULL) {
+        s32_t err = SPIFFS_errno(d.fs);
+        if (err != SPIFFS_OK && err > SPIFFS_ERR_INTERNAL) {
+            DEBUG("spiffs: readdir: err=%d\n", err);
+            return -EIO;
+        }
+    }
+
+    if (ret) {
+        entry->d_ino = e.obj_id;
+        strncpy(entry->d_name, (char*) e.name, VFS_NAME_MAX);
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+static int _closedir(vfs_DIR *dirp)
+{
+    spiffs_DIR d;
+
+    memcpy(&d, dirp->private_data.buffer, sizeof(d));
+
+    return spiffs_err_to_errno(SPIFFS_closedir(&d));
+}
+
 static int spiffs_err_to_errno (s32_t err)
 {
     if (err >= 0) {
         return (int) err;
     }
+
+    DEBUG("spiffs: error=%d\n", err);
 
     switch (err) {
     case SPIFFS_OK:
@@ -359,7 +414,14 @@ static const vfs_file_ops_t spiffs_file_ops = {
     .fstat = _fstat,
 };
 
+static const vfs_dir_ops_t spiffs_dir_ops = {
+    .opendir = _opendir,
+    .readdir = _readdir,
+    .closedir = _closedir,
+};
+
 const vfs_file_system_t spiffs_file_system = {
     .fs_op = &spiffs_fs_ops,
     .f_op = &spiffs_file_ops,
+    .d_op = &spiffs_dir_ops,
 };

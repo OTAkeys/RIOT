@@ -30,7 +30,7 @@ extern "C" {
 #define SPIFFS_FS_WORK_SIZE  (512)
 #endif
 #ifndef SPIFFS_FS_FD_SPACE_SIZE
-#define SPIFFS_FS_FD_SPACE_SIZE (50)
+#define SPIFFS_FS_FD_SPACE_SIZE (125)
 #endif
 
 /**
