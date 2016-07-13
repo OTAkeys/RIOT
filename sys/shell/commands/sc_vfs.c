@@ -72,6 +72,8 @@ static int _errno_string(int err, char *buf, size_t buflen)
         _case_snprintf_errno_name(EFAULT);
         _case_snprintf_errno_name(EROFS);
         _case_snprintf_errno_name(EIO);
+        _case_snprintf_errno_name(ENAMETOOLONG);
+        _case_snprintf_errno_name(EPERM);
 
         default:
             res = snprintf(buf, buflen, "%d", err);
@@ -106,7 +108,13 @@ int _vfs_handler(int argc, char **argv)
         offset = atoi(argv[4]);
     }
 
-    vfs_normalize_path(path, path, strlen(path));
+    int res;
+    res = vfs_normalize_path(path, path, strlen(path) + 1);
+    if (res < 0) {
+        _errno_string(res, (char *)buf, sizeof(buf));
+        printf("Invalid path \"%s\": %s\n", path, buf);
+        return 5;
+    }
 
     int fd = vfs_open(path, O_RDONLY, 0);
     if (fd < 0) {
@@ -115,7 +123,6 @@ int _vfs_handler(int argc, char **argv)
         return 3;
     }
 
-    int res;
     res = vfs_lseek(fd, offset, SEEK_SET);
     if (res < 0) {
         _errno_string(res, (char *)buf, sizeof(buf));
@@ -175,9 +182,17 @@ int _ls_handler(int argc, char **argv)
         _ls_usage(argv);
         return 1;
     }
-    vfs_DIR dir;
+    char *path = argv[1];
     uint8_t buf[16];
-    int res = vfs_opendir(&dir, argv[1]);
+    int res;
+    res = vfs_normalize_path(path, path, strlen(path) + 1);
+    if (res < 0) {
+        _errno_string(res, (char *)buf, sizeof(buf));
+        printf("Invalid path \"%s\": %s\n", path, buf);
+        return 5;
+    }
+    vfs_DIR dir;
+    res = vfs_opendir(&dir, path);
     if (res < 0) {
         _errno_string(res, (char *)buf, sizeof(buf));
         printf("vfs_opendir error: %s\n", buf);
@@ -195,7 +210,7 @@ int _ls_handler(int argc, char **argv)
                 /* try again */
                 continue;
             }
-            return 1;
+            return 2;
         }
         if (res == 0) {
             /* end of stream */
