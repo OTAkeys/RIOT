@@ -48,39 +48,56 @@ static const constfs_file_t _files[] = {
     },
 };
 
-static const constfs_t fs = {
+static const constfs_t fs_data = {
     .files = _files,
     .nfiles = sizeof(_files) / sizeof(_files[0]),
 };
 
+static vfs_mount_t _test_vfs_mount_invalid_mount = {
+    .mount_point = "test",
+    .fs = &constfs_file_system,
+    .private_data = (void *)&fs_data,
+};
+
+static vfs_mount_t _test_vfs_mount = {
+    .mount_point = "/test",
+    .fs = &constfs_file_system,
+    .private_data = (void *)&fs_data,
+};
+
 static void test_vfs_mount_umount(void)
 {
-    int md = vfs_mount(&constfs_file_system, "/test", (void *)&fs);
-    TEST_ASSERT(md >= 0);
-    int res = vfs_umount(md);
-    TEST_ASSERT(res >= 0);
+    int res;
+    res = vfs_mount(&_test_vfs_mount);
+    TEST_ASSERT_EQUAL_INT(0, res);
+    res = vfs_umount(&_test_vfs_mount);
+    TEST_ASSERT_EQUAL_INT(0, res);
 }
 
-static void test_vfs_mount__invalid_path(void)
-{
-    int md = vfs_mount(&constfs_file_system, "test", (void *)&fs);
-    TEST_ASSERT(md < 0);
-}
-
-static void test_vfs_umount__invalid_md(void)
+static void test_vfs_mount__invalid(void)
 {
     int res;
-    res = vfs_umount(-1);
+    res = vfs_mount(NULL);
     TEST_ASSERT(res < 0);
-    res = vfs_umount(VFS_MAX_MOUNTS);
+
+    res = vfs_mount(&_test_vfs_mount_invalid_mount);
+    TEST_ASSERT(res < 0);
+}
+
+static void test_vfs_umount__invalid_mount(void)
+{
+    int res;
+    res = vfs_umount(NULL);
+    TEST_ASSERT(res < 0);
+    res = vfs_umount(&_test_vfs_mount);
     TEST_ASSERT(res < 0);
 }
 
 static void test_vfs_constfs_open(void)
 {
     int res;
-    int md = vfs_mount(&constfs_file_system, "/test", (void *)&fs);
-    TEST_ASSERT(md >= 0);
+    res = vfs_mount(&_test_vfs_mount);
+    TEST_ASSERT_EQUAL_INT(0, res);
 
     int fd;
     fd = vfs_open("/test/notfound", O_RDONLY, 0);
@@ -105,15 +122,15 @@ static void test_vfs_constfs_open(void)
         TEST_ASSERT_EQUAL_INT(0, res);
     }
 
-    res = vfs_umount(md);
+    res = vfs_umount(&_test_vfs_mount);
     TEST_ASSERT_EQUAL_INT(0, res);
 }
 
 static void test_vfs_constfs_read(void)
 {
     int res;
-    int md = vfs_mount(&constfs_file_system, "/test//", (void *)&fs);
-    TEST_ASSERT(md >= 0);
+    res = vfs_mount(&_test_vfs_mount);
+    TEST_ASSERT_EQUAL_INT(0, res);
 
     int fd = vfs_open("/test/test.txt", O_RDONLY, 0);
     TEST_ASSERT(fd >= 0);
@@ -131,7 +148,7 @@ static void test_vfs_constfs_read(void)
     res = vfs_close(fd);
     TEST_ASSERT_EQUAL_INT(0, res);
 
-    res = vfs_umount(md);
+    res = vfs_umount(&_test_vfs_mount);
     TEST_ASSERT_EQUAL_INT(0, res);
 }
 
@@ -139,8 +156,8 @@ static void test_vfs_constfs_read(void)
 static void test_vfs_constfs__posix(void)
 {
     int res;
-    int md = vfs_mount(&constfs_file_system, "/test", (void *)&fs);
-    TEST_ASSERT(md >= 0);
+    res = vfs_mount(&_test_vfs_mount);
+    TEST_ASSERT_EQUAL_INT(0, res);
 
     int fd = open("/test/test.txt", O_RDONLY, 0);
     TEST_ASSERT(fd >= 0);
@@ -161,7 +178,7 @@ static void test_vfs_constfs__posix(void)
     res = close(fd);
     TEST_ASSERT_EQUAL_INT(0, res);
 
-    res = vfs_umount(md);
+    res = vfs_umount(&_test_vfs_mount);
     TEST_ASSERT_EQUAL_INT(0, res);
 }
 #endif
@@ -170,8 +187,8 @@ Test *tests_vfs_mount_constfs_tests(void)
 {
     EMB_UNIT_TESTFIXTURES(fixtures) {
         new_TestFixture(test_vfs_mount_umount),
-        new_TestFixture(test_vfs_mount__invalid_path),
-        new_TestFixture(test_vfs_umount__invalid_md),
+        new_TestFixture(test_vfs_mount__invalid),
+        new_TestFixture(test_vfs_umount__invalid_mount),
         new_TestFixture(test_vfs_constfs_open),
         new_TestFixture(test_vfs_constfs_read),
 #if MODULE_NEWLIB
