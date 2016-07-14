@@ -149,7 +149,7 @@ static int _rename(vfs_mount_t *mountp, const char *from_path, const char *to_pa
     return spiffs_err_to_errno(SPIFFS_rename(&fs_desc->fs, from_path, to_path));
 }
 
-static int _open(vfs_file_t *filp, const char *name, int flags, int mode, const char *abs_path)
+static int _open(vfs_file_t *filp, const char *name, int flags, mode_t mode, const char *abs_path)
 {
     spiffs_desc_t *fs_desc = filp->mp->private_data;
     (void) abs_path;
