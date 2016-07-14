@@ -291,7 +291,7 @@ struct vfs_file_ops {
      * @return 0 on success
      * @return <0 on error
      */
-    int (*open) (vfs_file_t *filp, const char *name, int flags, int mode, const char *abs_path);
+    int (*open) (vfs_file_t *filp, const char *name, int flags, mode_t mode, const char *abs_path);
 
     /**
      * @brief Read bytes from an open file
