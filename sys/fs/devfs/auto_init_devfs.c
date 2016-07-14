@@ -25,8 +25,13 @@
 #define ENABLE_DEBUG (1)
 #include "debug.h"
 
+static vfs_mount_t _devfs_auto_init_mount = {
+    .fs = &devfs_file_system,
+    .mount_point = "/dev",
+};
+
 void auto_init_devfs(void)
 {
     DEBUG("auto_init_devfs: mounting /dev\n");
-    vfs_mount(&devfs_file_system, "/dev", NULL);
+    vfs_mount(&_devfs_auto_init_mount);
 }
