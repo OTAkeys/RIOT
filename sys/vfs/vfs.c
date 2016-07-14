@@ -808,7 +808,10 @@ inline static int _find_mount(vfs_mount_t **mountpp, const char *name, const cha
         }
         else if (strncmp(name, it->mount_point, len) == 0) {
             /* mount_point is a prefix of name */
-            longest_match = len;
+            /* special check for mount_point == "/" */
+            if (len > 1) {
+                longest_match = len;
+            }
             mountp = it;
         }
         it = it->next;
