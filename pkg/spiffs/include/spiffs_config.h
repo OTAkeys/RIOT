@@ -20,9 +20,6 @@
 #include <unistd.h>
 #include <stdint.h>
 
-#define ENABLE_DEBUG (0)
-#include <debug.h>
-
 // ----------- >8 ------------
 
 // compile time switches
