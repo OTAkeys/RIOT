@@ -44,27 +44,6 @@ extern "C" {
 #define VFS_MAX_OPEN_FILES (16)
 #endif
 
-#ifndef VFS_MAX_MOUNTS
-/**
- * @brief Maximum number of simultaneous mounted file systems
- */
-#define VFS_MAX_MOUNTS (4)
-#endif
-
-#ifndef VFS_MOUNT_POINT_LEN
-/**
- * @brief Longest possible mount point name, including trailing null byte
- */
-/* string       | required length
- * "/"          | 2
- * "/mnt"       | 5
- * "/home"      | 6
- * "/var/tmp"   | 9
- * "/mnt/cdrom" | 11
- */
-#define VFS_MOUNT_POINT_LEN (8)
-#endif
-
 #ifndef VFS_DIR_BUFFER_SIZE
 /**
  * @brief Size of buffer space in vfs_DIR
@@ -118,16 +97,24 @@ struct vfs_file_ops;
  * @brief struct @c vfs_file_ops typedef
  */
 typedef struct vfs_file_ops vfs_file_ops_t;
+
 struct vfs_dir_ops;
 /**
  * @brief struct @c vfs_dir_ops typedef
  */
 typedef struct vfs_dir_ops vfs_dir_ops_t;
+
 struct vfs_file_system_ops;
 /**
  * @brief struct @c vfs_file_system_ops typedef
  */
 typedef struct vfs_file_system_ops vfs_file_system_ops_t;
+
+struct vfs_mount_struct; /* not vfs_mount because of name collision with the function */
+/**
+ * @brief struct @c vfs_mount_struct typedef
+ */
+typedef struct vfs_mount_struct vfs_mount_t;
 
 /**
  * @brief A file system driver
@@ -141,12 +128,14 @@ typedef struct {
 /**
  * @brief A mounted file system
  */
-typedef struct {
-    const vfs_file_system_t *fs;     /**< The file system driver for the mount point */
-    char mount_point[VFS_MOUNT_POINT_LEN]; /**< Mount point, e.g. "/mnt/cdrom" */
-    atomic_int_t open_files;   /**< Number of currently open files */
-    void *private_data;        /**< File system driver private data, implementation defined */
-} vfs_mount_t;
+struct vfs_mount_struct {
+    vfs_mount_t *next;
+    const vfs_file_system_t *fs; /**< The file system driver for the mount point */
+    const char *mount_point;     /**< Mount point, e.g. "/mnt/cdrom" */
+    size_t mount_point_len;      /**< Length of mount_point string (set by vfs_mount) */
+    atomic_int_t open_files;     /**< Number of currently open files */
+    void *private_data;          /**< File system driver private data, implementation defined */
+};
 
 /**
  * @brief An open file
@@ -586,18 +575,15 @@ int vfs_closedir(vfs_DIR *dirp);
 /**
  * @brief Mount a file system
  *
- * @note fsp will only be shallow copied. Therefore, do not reuse the same
- * @p fsp for multiple mounts unless the file system driver has no state
- * associated with each instance
+ * @p mountp should have been populated in advance with a file system driver,
+ * a mount point, and private_data (if the file system driver uses one).
  *
- * @param[in]  fsp           pointer to file system driver instance
- * @param[in]  mount_point   absolute path to mount point
- * @param[in]  private_data  the private_data member of vfs_mount_t will be initialized to this
+ * @param[in]  mountp    pointer to the mount structure of the file system to mount
  *
- * @return md number on success (>= 0)
+ * @return 0 on success
  * @return <0 on error
  */
-int vfs_mount(const vfs_file_system_t *fsp, const char *mount_point, void *private_data);
+int vfs_mount(vfs_mount_t *mountp);
 
 /**
  * @brief Rename a file
@@ -619,12 +605,12 @@ int vfs_rename(const char *from_path, const char *to_path);
  *
  * This will fail if there are any open files on the mounted file system
  *
- * @param[in]  md    md number of the file system to unmount
+ * @param[in]  mountp    pointer to the mount structure of the file system to unmount
  *
  * @return 0 on success
  * @return <0 on error
  */
-int vfs_umount(int md);
+int vfs_umount(vfs_mount_t *mountp);
 
 /**
  * @brief Unlink (delete) a file from a mounted file system
