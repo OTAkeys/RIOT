@@ -46,6 +46,12 @@ static devfs_t _mock_devfs_node = {
     .private_data = &_mock_private_data_tag,
 };
 
+static vfs_mount_t _test_devfs_mount = {
+    .fs = &devfs_file_system,
+    .mount_point = "/test",
+    .private_data = &_mock_private_data,
+};
+
 static int _mock_open(vfs_file_t *filp, const char *name, int flags, mode_t mode, const char *abs_path)
 {
     (void) name;
@@ -108,12 +114,13 @@ static void test_devfs_register(void)
 static void test_devfs_mount_open(void)
 {
     _mock_private_data = 12345;
-    int md = vfs_mount(&devfs_file_system, "/test", &_mock_private_data);
-    TEST_ASSERT(md >= 0);
+    int res;
+    res = vfs_mount(&_test_devfs_mount);
+    TEST_ASSERT_EQUAL_INT(0, res);
     TEST_ASSERT_EQUAL_INT(_mock_private_data, 12345);
 
-    int res = devfs_register(&_mock_devfs_node);
-    TEST_ASSERT(res == 0);
+    res = devfs_register(&_mock_devfs_node);
+    TEST_ASSERT_EQUAL_INT(0, res);
 
     int count = _mock_open_calls;
     int fd = vfs_open("/test/mock0", O_RDWR, 0);
@@ -122,13 +129,13 @@ static void test_devfs_mount_open(void)
     TEST_ASSERT_EQUAL_INT(_mock_private_data, 12346);
 
     res = vfs_close(fd);
-    TEST_ASSERT(res == 0);
+    TEST_ASSERT_EQUAL_INT(0, res);
 
     res = devfs_unregister(&_mock_devfs_node);
-    TEST_ASSERT(res == 0);
+    TEST_ASSERT_EQUAL_INT(0, res);
 
-    res = vfs_umount(md);
-    TEST_ASSERT(res == 0);
+    res = vfs_umount(&_test_devfs_mount);
+    TEST_ASSERT_EQUAL_INT(0, res);
 }
 
 Test *tests_devfs_tests(void)
