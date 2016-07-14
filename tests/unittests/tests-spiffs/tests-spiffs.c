@@ -93,6 +93,42 @@ static void tests_spiffs_write(void)
     TEST_ASSERT(res >= 0);
 }
 
+static void tests_spiffs_write2(void)
+{
+    char buf[1024];
+    /*char r_buf[sizeof(buf) + 2];*/
+
+    for (int i = 0; i < 1024; i++) {
+        buf[i] = 'A' + (i % 30);
+    }
+
+    int mp = vfs_mount(&spiffs_file_system, "/", &spiffs_desc);
+    TEST_ASSERT(mp >= 0);
+
+    int res;
+    for (int j = 0; j < 20; j++) {
+        int fd = vfs_open("/test.txt", O_CREAT | O_RDWR, 0);
+        TEST_ASSERT(fd >= 0);
+
+        for  (int i = 0; i < 1000; i++) {
+            res = vfs_write(fd, buf, sizeof(buf));
+            TEST_ASSERT_EQUAL_INT(sizeof(buf), res);
+        }
+
+        res = vfs_lseek(fd, 0, SEEK_SET);
+        TEST_ASSERT(res == 0);
+
+        res = vfs_close(fd);
+        TEST_ASSERT(res == 0);
+
+        res = vfs_unlink("/test.txt");
+        TEST_ASSERT(res == 0);
+    }
+
+    res = vfs_umount(mp);
+    TEST_ASSERT(res >= 0);
+}
+
 static void tests_spiffs_unlink(void)
 {
     const char buf[] = "TESTSTRING";
@@ -246,6 +282,7 @@ Test *tests_spiffs_tests(void)
         new_TestFixture(tests_spiffs_unlink),
         new_TestFixture(tests_spiffs_readdir),
         new_TestFixture(tests_spiffs_rename),
+        new_TestFixture(tests_spiffs_write2),
     };
 
     EMB_UNIT_TESTCALLER(spiffs_tests, NULL, NULL, fixtures);
