@@ -36,7 +36,7 @@ static mutex_t _devfs_mutex = MUTEX_INIT;
 
 /* File operations */
 /* Only open is overloaded to allow searching for the correct device */
-static int devfs_open(vfs_file_t *filp, const char *name, int flags, int mode, const char *abs_path);
+static int devfs_open(vfs_file_t *filp, const char *name, int flags, mode_t mode, const char *abs_path);
 static int devfs_fcntl(vfs_file_t *filp, int cmd, int arg);
 
 /* Directory operations */
@@ -60,9 +60,9 @@ const vfs_file_system_t devfs_file_system = {
     .d_op = &devfs_dir_ops,
 };
 
-static int devfs_open(vfs_file_t *filp, const char *name, int flags, int mode, const char *abs_path)
+static int devfs_open(vfs_file_t *filp, const char *name, int flags, mode_t mode, const char *abs_path)
 {
-    DEBUG("devfs_open: %p, \"%s\", 0x%x, %04o, \"%s\"\n", (void *)filp, name, flags, mode, abs_path);
+    DEBUG("devfs_open: %p, \"%s\", 0x%x, 0%03lo, \"%s\"\n", (void *)filp, name, flags, (unsigned long)mode, abs_path);
     /* linear search through the device list */
     devfs_t *node = _devfs_head;
     while (node != NULL) {
@@ -103,6 +103,7 @@ static int devfs_fcntl(vfs_file_t *filp, int cmd, int arg)
 
 static int devfs_opendir(vfs_DIR *dirp, const char *dirname, const char *abs_path)
 {
+    (void) abs_path;
     DEBUG("devfs_opendir: %p, \"%s\", \"%s\"\n", (void *)dirp, dirname, abs_path);
     if (strncmp(dirname, "/", 2) != 0) {
         /* We keep it simple and only support a flat file system, only a root directory */
