@@ -111,30 +111,30 @@ static void tests_spiffs_write2(void)
         buf[i] = 'A' + (i % 30);
     }
 
-    int mp = vfs_mount(&spiffs_file_system, "/", &spiffs_desc);
+    int mp = vfs_mount(&_test_spiffs_mount);
     TEST_ASSERT(mp >= 0);
 
     int res;
-    for (int j = 0; j < 20; j++) {
-        int fd = vfs_open("/test.txt", O_CREAT | O_RDWR, 0);
+    for (int j = 0; j < 10; j++) {
+        int fd = vfs_open("/test-spiffs/test.txt", O_CREAT | O_RDWR, 0);
         TEST_ASSERT(fd >= 0);
 
-        for  (int i = 0; i < 1000; i++) {
+        for  (int i = 0; i < 500; i++) {
             res = vfs_write(fd, buf, sizeof(buf));
             TEST_ASSERT_EQUAL_INT(sizeof(buf), res);
         }
 
         res = vfs_lseek(fd, 0, SEEK_SET);
-        TEST_ASSERT(res == 0);
+        TEST_ASSERT_EQUAL_INT(0, res);
 
         res = vfs_close(fd);
-        TEST_ASSERT(res == 0);
+        TEST_ASSERT_EQUAL_INT(0, res);
 
-        res = vfs_unlink("/test.txt");
-        TEST_ASSERT(res == 0);
+        res = vfs_unlink("/test-spiffs/test.txt");
+        TEST_ASSERT_EQUAL_INT(0, res);
     }
 
-    res = vfs_umount(mp);
+    res = vfs_umount(&_test_spiffs_mount);
     TEST_ASSERT(res >= 0);
 }
 
