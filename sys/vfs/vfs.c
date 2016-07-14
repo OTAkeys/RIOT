@@ -251,7 +251,7 @@ off_t vfs_lseek(int fd, off_t off, int whence)
 
 int vfs_open(const char *name, int flags, mode_t mode)
 {
-    DEBUG("vfs_open: \"%s\", 0x%x, %04lo\n", name, flags, (long unsigned int)mode);
+    DEBUG("vfs_open: \"%s\", 0x%x, 0%03lo\n", name, flags, (long unsigned int)mode);
     if (name == NULL) {
         return -EINVAL;
     }
@@ -577,7 +577,7 @@ int vfs_unlink(const char *name)
 
 int vfs_mkdir(const char *name, mode_t mode)
 {
-    DEBUG("vfs_mkdir: \"%s\", %04lo\n", name, (long unsigned int)mode);
+    DEBUG("vfs_mkdir: \"%s\", 0%03lo\n", name, (long unsigned int)mode);
     if (name == NULL) {
         return -EINVAL;
     }
