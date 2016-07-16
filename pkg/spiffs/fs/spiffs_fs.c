@@ -260,31 +260,30 @@ static int _fstat(vfs_file_t *filp, struct stat *buf)
 static int _opendir(vfs_DIR *dirp, const char *dirname, const char *abs_path)
 {
     spiffs_desc_t *fs_desc = dirp->mp->private_data;
-    spiffs_DIR d;
+    spiffs_DIR *d = (spiffs_DIR *)&dirp->private_data.buffer[0];
     (void) abs_path;
 
     if (VFS_DIR_BUFFER_SIZE < sizeof(spiffs_DIR)) {
         return -EOVERFLOW;
     }
 
-    SPIFFS_opendir(&fs_desc->fs, dirname, &d);
-    memcpy(dirp->private_data.buffer, &d, sizeof(d));
+    spiffs_DIR *res = SPIFFS_opendir(&fs_desc->fs, dirname, d);
+    if (res == NULL) {
+        return -ENOENT;
+    }
 
     return 0;
 }
 
 static int _readdir(vfs_DIR *dirp, vfs_dirent_t *entry)
 {
-    spiffs_DIR d;
+    spiffs_DIR *d = (spiffs_DIR *)&dirp->private_data.buffer[0];
     struct spiffs_dirent e;
     struct spiffs_dirent *ret;
 
-    memcpy(&d, dirp->private_data.buffer, sizeof(d));
-
-    ret = SPIFFS_readdir(&d, &e);
-    memcpy(dirp->private_data.buffer, &d, sizeof(d));
+    ret = SPIFFS_readdir(d, &e);
     if (ret == NULL) {
-        s32_t err = SPIFFS_errno(d.fs);
+        s32_t err = SPIFFS_errno(d->fs);
         if (err != SPIFFS_OK && err > SPIFFS_ERR_INTERNAL) {
             DEBUG("spiffs: readdir: err=%d\n", err);
             return -EIO;
@@ -303,11 +302,9 @@ static int _readdir(vfs_DIR *dirp, vfs_dirent_t *entry)
 
 static int _closedir(vfs_DIR *dirp)
 {
-    spiffs_DIR d;
+    spiffs_DIR *d = (spiffs_DIR *)&dirp->private_data.buffer[0];
 
-    memcpy(&d, dirp->private_data.buffer, sizeof(d));
-
-    return spiffs_err_to_errno(SPIFFS_closedir(&d));
+    return spiffs_err_to_errno(SPIFFS_closedir(d));
 }
 
 static int spiffs_err_to_errno (s32_t err)
