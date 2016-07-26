@@ -25,6 +25,9 @@
 #define MTD_H
 
 #include <stdint.h>
+#if MODULE_VFS
+#include "vfs.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -192,6 +195,9 @@ int mtd_erase(mtd_dev_t *mtd, uint32_t addr, uint32_t count);
  */
 int mtd_power(mtd_dev_t *mtd, enum mtd_power_state power);
 
+#if MODULE_VFS
+extern const vfs_file_ops_t mtd_vfs_ops;
+#endif
 
 #ifdef __cplusplus
 }
