@@ -49,7 +49,7 @@ static const  saul_gpio_params_t saul_gpio_params[] =
     {
         .name = "B1(User button)",
         .pin = BTN_B1_PIN,
-        .mode = GPIO_IN_PU
+        .mode = GPIO_IN_PD
     }
 };
 
