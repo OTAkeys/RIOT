@@ -183,7 +183,7 @@ void xtimer_now_timex(timex_t *out)
     uint64_t now = xtimer_usec_from_ticks64(xtimer_now64());
 
     out->seconds = div_u64_by_1000000(now);
-    out->microseconds = now - (out->seconds * SEC_IN_USEC);
+    out->microseconds = now - (out->seconds * US_PER_SEC);
 }
 
 /* Prepares the message to trigger the timeout.
@@ -233,8 +233,12 @@ static void _mutex_timeout(void *arg)
     mutex_thread_t *mt = (mutex_thread_t *)arg;
 
     mt->timeout = 1;
+    list_node_t *node = list_remove(&mt->mutex->queue,
+                                    (list_node_t *)&mt->thread->rq_entry);
+    if ((node != NULL) && (mt->mutex->queue.next == NULL)) {
+        mt->mutex->queue.next = MUTEX_LOCKED;
+    }
     sched_set_status(mt->thread, STATUS_PENDING);
-    list_remove(&mt->mutex->queue, (list_node_t *)&mt->thread->rq_entry);
     thread_yield_higher();
 }
 

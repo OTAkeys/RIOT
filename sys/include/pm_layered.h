@@ -7,7 +7,8 @@
  */
 
 /**
- * @ingroup     drivers_periph_pm
+ * @defgroup    sys_pm_layered Layered PM Infrastructure
+ * @ingroup     sys
  * @{
  *
  * This module provides a base infrastructure that MCU's may use to implement
@@ -30,8 +31,8 @@
  * @author      Kaspar Schleiser <kaspar@schleiser.de>
  */
 
-#ifndef PM_LAYERED_H_
-#define PM_LAYERED_H_
+#ifndef PM_LAYERED_H
+#define PM_LAYERED_H
 
 #include "assert.h"
 #include "periph/pm.h"
@@ -71,5 +72,5 @@ void pm_set(unsigned mode);
 }
 #endif
 
-#endif /* __PM_LAYERED_H_ */
+#endif /* __PM_LAYERED_H */
 /** @} */

@@ -13,7 +13,7 @@
  * @file
  * @brief           Shared CPU specific definitions for the STM32 family
  *
- * @author          Hauke Petersen <hauke.peterse@fu-berlin.de>
+ * @author          Hauke Petersen <hauke.petersen@fu-berlin.de>
  */
 
 #ifndef PERIPH_CPU_COMMON_H
@@ -39,7 +39,7 @@ extern "C" {
  * @brief   Use the shared SPI functions
  * @{
  */
-#define PERIPH_SPI_NEEDS_TRANSFER_BYTES
+#define PERIPH_SPI_NEEDS_TRANSFER_BYTE
 #define PERIPH_SPI_NEEDS_TRANSFER_REG
 #define PERIPH_SPI_NEEDS_TRANSFER_REGS
 /** @} */
@@ -57,7 +57,10 @@ extern "C" {
 typedef enum {
     APB1,           /**< APB1 bus */
     APB2,           /**< APB2 bus */
-#if defined(CPU_FAM_STM32L0) || defined(CPU_FAM_STM32L1) || defined(CPU_FAM_STM32F1)\
+#if defined(CPU_FAM_STM32L0)
+    AHB,            /**< AHB bus */
+    IOP,            /**< IOP bus */
+#elif defined(CPU_FAM_STM32L1) || defined(CPU_FAM_STM32F1)\
     || defined(CPU_FAM_STM32F0) || defined(CPU_FAM_STM32F3)
     AHB,            /**< AHB bus */
 #elif defined(CPU_FAM_STM32F2) || defined(CPU_FAM_STM32F4)
@@ -88,6 +91,22 @@ typedef uint32_t gpio_t;
  * @brief   Define a CPU specific GPIO pin generator macro
  */
 #define GPIO_PIN(x, y)      ((GPIOA_BASE + (x << 10)) | y)
+
+/**
+ * @brief   Define a magic number that tells us to use hardware chip select
+ *
+ * We use a random value here, that does clearly differentiate from any possible
+ * GPIO_PIN(x) value.
+ */
+#define SPI_HWCS_MASK       (0xffffff00)
+
+/**
+ * @brief   Override the default SPI hardware chip select access macro
+ *
+ * Since the CPU does only support one single hardware chip select line, we can
+ * detect the usage of non-valid lines by comparing to SPI_HWCS_VALID.
+ */
+#define SPI_HWCS(x)         (SPI_HWCS_MASK | x)
 
 /**
  * @brief   Available MUX values for configuring a pin's alternate function
@@ -130,15 +149,23 @@ typedef struct {
 } timer_conf_t;
 
 /**
+ * @brief   PWM channel
+ */
+typedef struct {
+    gpio_t pin;             /**< GPIO pin mapped to this channel */
+    uint8_t cc_chan;        /**< capture compare channel used */
+} pwm_chan_t;
+
+/**
  * @brief   PWM configuration
  */
 typedef struct {
-    TIM_TypeDef *dev;       /**< Timer used */
-    uint32_t rcc_mask;      /**< bit in clock enable register */
-    gpio_t pins[4];         /**< pins used, set to GPIO_UNDEF if not used */
-    gpio_af_t af;           /**< alternate function used */
-    uint8_t chan;           /**< number of configured channels */
-    uint8_t bus;            /**< APB bus */
+    TIM_TypeDef *dev;               /**< Timer used */
+    uint32_t rcc_mask;              /**< bit in clock enable register */
+    pwm_chan_t chan[TIMER_CHAN];    /**< channel mapping, set to {GPIO_UNDEF, 0}
+                                     *   if not used */
+    gpio_af_t af;                   /**< alternate function used */
+    uint8_t bus;                    /**< APB bus */
 } pwm_conf_t;
 
 /**
@@ -160,6 +187,22 @@ typedef struct {
     uint8_t dma_chan;       /**< DMA channel used for TX */
 #endif
 } uart_conf_t;
+
+/**
+ * @brief   Structure for SPI configuration data
+ */
+typedef struct {
+    SPI_TypeDef *dev;       /**< SPI device base register address */
+    gpio_t mosi_pin;        /**< MOSI pin */
+    gpio_t miso_pin;        /**< MISO pin */
+    gpio_t sclk_pin;        /**< SCLK pin */
+    gpio_t cs_pin;          /**< HWCS pin, set to GPIO_UNDEF if not mapped */
+#ifndef CPU_FAM_STM32F1
+    gpio_af_t af;           /**< pin alternate function */
+#endif
+    uint32_t rccmask;       /**< bit in the RCC peripheral enable register */
+    uint8_t apbbus;         /**< APBx bus the device is connected to */
+} spi_conf_t;
 
 /**
  * @brief   Get the actual bus clock frequency for the APB buses

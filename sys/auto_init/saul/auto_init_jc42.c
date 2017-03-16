@@ -48,23 +48,15 @@ static saul_reg_t saul_entries[JC42_NUMOF];
 extern const saul_driver_t jc42_temperature_saul_driver;
 /** @} */
 
-/**
- * @brief   Allocate and configure entries to the SAUL registry
- */
-saul_reg_t jc42_saul_reg_info[]=
-{
-    {
-        .name= "jc42",
-        .driver = &jc42_temperature_saul_driver
-    }
-};
-
 void auto_init_jc42(void)
 {
     for (unsigned i = 0; i < JC42_NUMOF; i++) {
         const jc42_params_t *p = &jc42_params[i];
+
+        LOG_DEBUG("[auto_init_saul] initializing jc42 #%u\n", i);
+
         if (jc42_init(&jc42_devs[i], (jc42_params_t*) p) < 0) {
-            LOG_ERROR("Unable to initialize jc42 sensor #%i\n", i);
+            LOG_ERROR("[auto_init_saul] error initializing jc42 #%u\n", i);
             return;
         }
 

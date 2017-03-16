@@ -16,8 +16,8 @@
  * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
  */
 
-#ifndef PERIPH_CONF_H_
-#define PERIPH_CONF_H_
+#ifndef PERIPH_CONF_H
+#define PERIPH_CONF_H
 
 #include "lpc2387.h"
 
@@ -26,7 +26,7 @@ extern "C" {
 #endif
 
 /**
- * @brief   Clock configuration
+ * @name   Clock configuration
  * @{
  */
 #define CLOCK_CORECLOCK     (72000000U)         /* this board runs with 72MHz */
@@ -35,32 +35,36 @@ extern "C" {
 /** @} */
 
 /**
- * @brief   Timer configuration, select a number from 1 to 4
+ * @name   Timer configuration, select a number from 1 to 4
  * @{
  */
 #define TIMER_NUMOF         (1U)
 /** @} */
 
 /**
- * @brief Real Time Clock configuration
+ * @name Real Time Clock configuration
  */
-#define RTC_NUMOF           (1)
+#define RTC_NUMOF           (1U)
+/** @} */
 
 /**
- * @brief uart configuration
+ * @name UART configuration
+ * @{
  */
-#define UART_NUMOF          (1)
+#define UART_NUMOF          (1U)
 #define UART_0_EN           (1)
+/** @} */
 
 /**
- * @brief SPI configuration
+ * @name   SPI configuration
+ * @{
  */
-#define SPI_NUMOF           (1)
-#define SPI_0_EN            (1)
+#define SPI_NUMOF           (1U)
+/** @} */
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* PERIPH_CONF_H_ */
+#endif /* PERIPH_CONF_H */
 /** @} */

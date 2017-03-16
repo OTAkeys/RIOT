@@ -9,19 +9,17 @@ def periph_tests = []
 def other_tests = []
 def unittests = []
 
-githubNotify context: 'Jenkins', description: 'Build started', status: 'PENDING', targetUrl: "${env.BUILD_URL}artifact"
-
 /* stop running jobs */
 abortPreviousBuilds()
 
-node ('master') {
-    stage('setup') {
+stage('setup') {
+    node ('master') {
+        sh '(( "\${RIOT_MIRROR}" )) && git -C "\${RIOT_MIRROR_DIR}" fetch --all'
+
         deleteDir()
-        checkout scm
-        /* also fetch master branch - necessary for static tests */
-        sh "git fetch origin master:master"
-        /* stash workspace for slaves */
-        stash 'sources'
+
+        fetchPR(env.CHANGE_ID, "--depth=1", "")
+
         /* get all boards */
         boards = sh(returnStdout: true,
                     script: 'find $(pwd)/boards/* -maxdepth 0 -type d \\! -name "*-common" -exec basename {} \\;'
@@ -53,9 +51,16 @@ node ('master') {
                 other_tests << tests[i]
             }
         }
+        deleteDir()
     }
+}
 
-    stage('static-tests') {
+stage('static-tests') {
+    node('linux && boards') {
+        deleteDir()
+
+        fetchPR(env.CHANGE_ID, "", "master:master")
+
         def ret = sh(returnStatus: true,
                      script: """#!/bin/bash +x
                                 declare -i RESULT=0
@@ -68,9 +73,8 @@ node ('master') {
             currentBuild.result = 'UNSTABLE'
         }
         step([$class: 'ArtifactArchiver', artifacts: "*_static-tests.log", fingerprint: true, allowEmptyArchive: true])
+        deleteDir()
     }
-
-    deleteDir()
 }
 
 stage("unittests") {
@@ -144,17 +148,9 @@ stage("examples") {
     abortOnError("examples failed")
 }
 
-def buildState = 'SUCCESS'
-
 if (currentBuild.result == null) {
     currentBuild.result = 'SUCCESS'
 }
-else if (currentBuild.result != 'SUCCESS') {
-    buildState = 'FAILURE'
-}
-
-/* set commit status in GitHub with url pointing to logs manually (necessary workaround for now) */
-githubNotify context: 'Jenkins', description: "${currentBuild.result}", status: buildState, targetUrl: "${env.BUILD_URL}artifact"
 
 /* create a job */
 def make_build(label, board, desc, arg)
@@ -163,8 +159,9 @@ def make_build(label, board, desc, arg)
         node(label) {
             try {
                 deleteDir()
-                unstash 'sources'
+                fetchPR(env.CHANGE_ID, "--depth=1", "")
                 def build_dir = pwd()
+                sh "./dist/tools/git/git-cache init"
                 timestamps {
                     def apps = arg.join(' ')
                     echo "building ${apps} for ${board} on nodes with ${label}"
@@ -218,7 +215,18 @@ def abortPreviousBuilds()
 def abortOnError(msg)
 {
     if ((currentBuild.result != null) && (currentBuild.result == 'FAILURE')) {
-        githubNotify context: 'Jenkins', description: msg, status: 'FAILURE', targetUrl: "${env.BUILD_URL}artifact"
         error msg
     }
+}
+
+def fetchPR(prNum, fetchArgs, extraRefSpec)
+{
+    sh """git init
+    if (( "\${RIOT_MIRROR}" )); then RIOT_URL="\${RIOT_MIRROR_URL}"; else RIOT_URL="https://github.com/RIOT-OS/RIOT"; fi
+    git remote add origin "\${RIOT_URL}"
+    for RETRIES in {1..3}; do
+        timeout 30 git fetch -u -n ${fetchArgs} origin ${extraRefSpec} pull/${prNum}/merge:pull_${prNum} && break
+    done
+    [[ "\$RETRIES" -eq 3 ]] && exit 1
+    git checkout pull_${prNum}"""
 }

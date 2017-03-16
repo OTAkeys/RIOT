@@ -19,13 +19,12 @@
  * @author      Kaspar Schleiser <kaspar@schleiser.de>
  */
 
-#ifndef MUTEX_H_
-#define MUTEX_H_
+#ifndef MUTEX_H
+#define MUTEX_H
 
 #include <stddef.h>
 
 #include "list.h"
-#include "atomic.h"
 
 #ifdef __cplusplus
  extern "C" {
@@ -132,5 +131,5 @@ void mutex_unlock_and_sleep(mutex_t *mutex);
 }
 #endif
 
-#endif /* MUTEX_H_ */
+#endif /* MUTEX_H */
 /** @} */

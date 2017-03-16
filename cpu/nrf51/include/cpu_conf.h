@@ -13,15 +13,15 @@
  * @file
  * @brief           Implementation specific CPU configuration options
  *
- * @author          Hauke Petersen <hauke.peterse@fu-berlin.de>
+ * @author          Hauke Petersen <hauke.petersen@fu-berlin.de>
  */
 
 #ifndef CPU_CONF_H
 #define CPU_CONF_H
 
 #include "cpu_conf_common.h"
-#include "nrf51.h"
-#include "nrf51_bitfields.h"
+#include "vendor/nrf51.h"
+#include "vendor/nrf51_bitfields.h"
 
 #ifdef __cplusplus
 extern "C" {

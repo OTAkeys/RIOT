@@ -19,6 +19,7 @@
 #include "net/ipv4/addr.h"
 #include "net/ipv6/addr.h"
 #include "net/sock.h"
+#include "timex.h"
 
 #include "lwip/err.h"
 #include "lwip/ip.h"
@@ -294,6 +295,11 @@ int lwip_sock_create(struct netconn **conn, const struct _sock_tl_ep *local,
          * local->port) demand binding */
         if (bind) {
             switch (netconn_bind(*conn, &local_addr, local_port)) {
+#if LWIP_TCP
+                case ERR_BUF:
+                    res = -ENOMEM;
+                    break;
+#endif
                 case ERR_USE:
                     res = -EADDRINUSE;
                     break;
@@ -310,6 +316,24 @@ int lwip_sock_create(struct netconn **conn, const struct _sock_tl_ep *local,
         }
         if (remote != NULL) {
             switch (netconn_connect(*conn, &remote_addr, remote_port)) {
+#if LWIP_TCP
+                case ERR_BUF:
+                    res = -ENOMEM;
+                    break;
+                case ERR_INPROGRESS:
+                    res = -EINPROGRESS;
+                    break;
+                case ERR_ISCONN:
+                    res = -EISCONN;
+                    break;
+                case ERR_IF:
+                case ERR_RTE:
+                    res = -ENETUNREACH;
+                    break;
+                case ERR_ABRT:
+                    res = -ETIMEDOUT;
+                    break;
+#endif
                 case ERR_USE:
                     res = -EADDRINUSE;
                     break;
@@ -402,6 +426,7 @@ int lwip_sock_get_addr(struct netconn *conn, struct _sock_tl_ep *ep, u8_t local)
     return 0;
 }
 
+#if defined(MODULE_LWIP_SOCK_UDP) || defined(MODULE_LWIP_SOCK_IP)
 int lwip_sock_recv(struct netconn *conn, uint32_t timeout, struct netbuf **buf)
 {
     int res;
@@ -411,7 +436,7 @@ int lwip_sock_recv(struct netconn *conn, uint32_t timeout, struct netbuf **buf)
     }
 #if LWIP_SO_RCVTIMEO
     if ((timeout != 0) && (timeout != SOCK_NO_TIMEOUT)) {
-        netconn_set_recvtimeout(conn, timeout / MS_IN_USEC);
+        netconn_set_recvtimeout(conn, timeout / US_PER_MS);
     }
     else
 #endif
@@ -440,6 +465,7 @@ int lwip_sock_recv(struct netconn *conn, uint32_t timeout, struct netbuf **buf)
 #endif
     return res;
 }
+#endif /* defined(MODULE_LWIP_SOCK_UDP) || defined(MODULE_LWIP_SOCK_IP) */
 
 ssize_t lwip_sock_send(struct netconn **conn, const void *data, size_t len,
                        int proto, const struct _sock_tl_ep *remote, int type)
@@ -493,15 +519,20 @@ ssize_t lwip_sock_send(struct netconn **conn, const void *data, size_t len,
         netbuf_delete(buf);
         return -ENOTCONN;
     }
+    res = len;  /* set for non-TCP calls */
     if (remote != NULL) {
         err = netconn_sendto(tmp, buf, &remote_addr, remote_port);
     }
+#if LWIP_TCP
+    else if (tmp->type & NETCONN_TCP) {
+        err = netconn_write_partly(tmp, data, len, 0, (size_t *)(&res));
+    }
+#endif /* LWIP_TCP */
     else {
         err = netconn_send(tmp, buf);
     }
     switch (err) {
         case ERR_OK:
-            res = len;
             if (conn != NULL) {
                 *conn = tmp;
             }
