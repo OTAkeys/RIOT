@@ -24,6 +24,10 @@
 #include "diskio.h"
 #endif
 
+#ifdef MODULE_ZTIMER
+#include "ztimer.h"
+#endif
+
 #ifdef MODULE_XTIMER
 #include "xtimer.h"
 #endif
@@ -96,6 +100,10 @@ void auto_init(void)
 #ifdef MODULE_PRNG
     void auto_init_random(void);
     auto_init_random();
+#endif
+#ifdef MODULE_ZTIMER
+    DEBUG("Auto init ztimer module.\n");
+    ztimer_board_init();
 #endif
 #ifdef MODULE_XTIMER
     DEBUG("Auto init xtimer module.\n");

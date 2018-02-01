@@ -4,3 +4,10 @@ ifneq (,$(filter saul_default,$(USEMODULE)))
   USEMODULE += isl29020
   USEMODULE += lps331ap
 endif
+
+ifneq (,$(filter ztimer,$(USEMODULE)))
+    USEMODULE += ztimer_periph
+    USEMODULE += ztimer_rtt
+    USEMODULE += ztimer_convert
+    USEMODULE += ztimer_extend
+endif
