@@ -76,6 +76,7 @@ PSEUDOMODULES += sock
 PSEUDOMODULES += sock_ip
 PSEUDOMODULES += sock_tcp
 PSEUDOMODULES += sock_udp
+PSEUDOMODULES += ztimer_%
 
 # print ascii representation in function od_hex_dump()
 PSEUDOMODULES += od_string
