@@ -20,9 +20,12 @@
 
 #include <stdint.h>
 #include <string.h>
+
+#ifndef MODULE_ZTIMER
 #include "board.h"
 #include "periph/timer.h"
 #include "periph_conf.h"
+#endif
 
 #include "xtimer.h"
 #include "irq.h"
@@ -52,7 +55,13 @@ static inline void _lltimer_set(uint32_t target);
 static uint32_t _time_left(uint32_t target, uint32_t reference);
 
 static void _timer_callback(void);
+
+#ifndef MODULE_ZTIMER
 static void _periph_timer_callback(void *arg, int chan);
+#else
+static void _ztimer_callback(void *arg);
+static ztimer_t _ztimer = { .callback=_ztimer_callback };
+#endif
 
 static inline int _this_high_period(uint32_t target);
 
@@ -71,8 +80,10 @@ static inline void xtimer_spin_until(uint32_t target) {
 
 void xtimer_init(void)
 {
+#ifndef MODULE_ZTIMER
     /* initialize low-level timer */
     timer_init(XTIMER_DEV, XTIMER_HZ, _periph_timer_callback, NULL);
+#endif
 
     /* register initial overflow tick */
     _lltimer_set(0xFFFFFFFF);
@@ -150,12 +161,20 @@ void _xtimer_set(xtimer_t *timer, uint32_t offset)
     }
 }
 
+#ifndef MODULE_ZTIMER
 static void _periph_timer_callback(void *arg, int chan)
 {
     (void)arg;
     (void)chan;
     _timer_callback();
 }
+#else
+static void _ztimer_callback(void *arg)
+{
+    (void)arg;
+    _timer_callback();
+}
+#endif
 
 static void _shoot(xtimer_t *timer)
 {
@@ -168,7 +187,12 @@ static inline void _lltimer_set(uint32_t target)
         return;
     }
     DEBUG("_lltimer_set(): setting %" PRIu32 "\n", _xtimer_lltimer_mask(target));
+
+#ifndef MODULE_ZTIMER
     timer_set_absolute(XTIMER_DEV, XTIMER_CHAN, _xtimer_lltimer_mask(target));
+#else
+    ztimer_set(ZTIMER_USEC, &_ztimer, target - ztimer_now(ZTIMER_USEC));
+#endif
 }
 
 int _xtimer_set_absolute(xtimer_t *timer, uint32_t target)
