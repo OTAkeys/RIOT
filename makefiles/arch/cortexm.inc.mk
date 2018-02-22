@@ -96,6 +96,7 @@ include $(RIOTCPU)/cortexm_common/Makefile.include
 # use the nano-specs of Newlib when available
 USEMODULE += newlib_nano
 export USE_NANO_SPECS = 1
+USEMODULE += newlib_thread_safe
 
 # Avoid overriding the default rule:
 all:
