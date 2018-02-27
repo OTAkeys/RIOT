@@ -20,9 +20,16 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#ifdef MODULE_NEWLIB
+#include <sys/reent.h>
+#else
+#include <stddef.h>
+#define _REENT NULL
+#endif
 
 #include "thread.h"
 #include "msg.h"
+#include "ps.h"
 
 char t1_stack[THREAD_STACKSIZE_MAIN];
 char t2_stack[THREAD_STACKSIZE_MAIN];
@@ -34,6 +41,7 @@ void *thread1(void *arg)
 {
     (void) arg;
     puts("THREAD 1 start\n");
+    printf("PID %4" PRIkernel_pid " reent: %p\n", thread_getpid(), _REENT);
 
     for (int i = 0; i < 3; ++i) {
         msg_t msg, reply;
@@ -56,6 +64,7 @@ void *thread2(void *arg)
 {
     (void) arg;
     puts("THREAD 2 start\n");
+    printf("PID %4" PRIkernel_pid " reent: %p\n", thread_getpid(), _REENT);
 
     for (int i = 0;; ++i) {
         msg_t msg, reply;
@@ -73,6 +82,7 @@ void *thread3(void *arg)
 {
     (void) arg;
     puts("THREAD 3 start\n");
+    printf("PID %4" PRIkernel_pid " reent: %p\n", thread_getpid(), _REENT);
 
     for (int i = 0;; ++i) {
         msg_t msg;
@@ -86,6 +96,8 @@ void *thread3(void *arg)
 int main(void)
 {
     p_main = sched_active_pid;
+    printf("PID %4" PRIkernel_pid " reent: %p\n", thread_getpid(), _REENT);
+    ps();
     p1 = thread_create(t1_stack, sizeof(t1_stack), THREAD_PRIORITY_MAIN - 1,
                        THREAD_CREATE_WOUT_YIELD | THREAD_CREATE_STACKTEST,
                        thread1, NULL, "nr1");
@@ -93,9 +105,10 @@ int main(void)
                        THREAD_CREATE_WOUT_YIELD | THREAD_CREATE_STACKTEST,
                        thread2, NULL, "nr2");
     p3 = thread_create(t3_stack, sizeof(t3_stack), THREAD_PRIORITY_MAIN - 1,
-                       THREAD_CREATE_WOUT_YIELD | THREAD_CREATE_STACKTEST,
+                       THREAD_CREATE_WOUT_YIELD | THREAD_CREATE_STACKTEST | THREAD_CREATE_REENT,
                        thread3, NULL, "nr3");
     puts("THREADS CREATED\n");
+    ps();
 
     msg_t msg;
     /* Wait until thread 1 is done */

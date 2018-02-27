@@ -175,6 +175,16 @@ kernel_pid_t thread_create(char *stack, int stacksize, char priority, int flags,
     /* allocate our thread control block at the top of our stackspace */
     thread_t *cb = (thread_t *) (stack + stacksize);
 
+#ifdef MODULE_NEWLIB_THREAD_SAFE
+    if (flags & THREAD_CREATE_REENT) {
+        /* Reduce stack space to make room for newlib's struct _reent and align
+         * to nearest 64 bit boundary */
+        stacksize -= sizeof(*cb->newlib_reent);
+        stacksize &= ~(8 - 1);
+        cb->newlib_reent = (void *)(stack + stacksize);
+    }
+#endif
+
 #if defined(DEVELHELP) || defined(SCHED_TEST_STACK)
     if (flags & THREAD_CREATE_STACKTEST) {
         /* assign each int of the stack the value of it's address */
@@ -233,6 +243,21 @@ kernel_pid_t thread_create(char *stack, int stacksize, char priority, int flags,
     cb->msg_waiters.next = NULL;
     cib_init(&(cb->msg_queue), 0);
     cb->msg_array = NULL;
+#endif
+
+#ifdef MODULE_NEWLIB_THREAD_SAFE
+    /* initialize the reent context */
+    if (flags & THREAD_CREATE_REENT) {
+        /* Reduce stack space by sizeof(struct _reent) and align to nearest 64
+         * bit boundary */
+        stacksize &= ~(8 - 1);
+        stacksize -= (sizeof(*cb->newlib_reent) + (8 - 1)) & ~(8 - 1);
+        /* Initialize reent struct */
+        _REENT_INIT_PTR(cb->newlib_reent);
+    }
+    else {
+        cb->newlib_reent = _GLOBAL_REENT;
+    }
 #endif
 
     sched_num_threads++;

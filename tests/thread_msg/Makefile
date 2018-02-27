@@ -4,6 +4,8 @@ BOARD_INSUFFICIENT_MEMORY := nucleo32-f031 nucleo32-f042
 
 DISABLE_MODULE += auto_init
 
+USEMODULE += ps
+
 include $(RIOTBASE)/Makefile.include
 
 test:
