@@ -206,7 +206,7 @@ struct _thread {
                                          to this thread's message queue */
 #endif
 #if defined(MODULE_NEWLIB_THREAD_SAFE) || defined(DOXYGEN)
-    struct _reent newlib_reent;     /**< thread's re-entrant object     */
+    struct _reent *newlib_reent;    /**< thread's re-entrant object     */
 #endif
 #if defined(DEVELHELP) || defined(SCHED_TEST_STACK) \
     || defined(MODULE_MPU_STACK_GUARD) || defined(DOXYGEN)
@@ -321,6 +321,14 @@ struct _thread {
   *        debugging and profiling purposes)
   */
 #define THREAD_CREATE_STACKTEST         (8)
+ /**
+  * @brief Allocate thread local reentrancy structure
+  *
+  * This will be allocated at the top of the stack, near the thread control block.
+  * A thread local reentrancy structure is required for thread safety in certain
+  * libc functions, e.g. stdio in newlib.
+  */
+#define THREAD_CREATE_REENT             (0x10u)
 /** @} */
 
 /**

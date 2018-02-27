@@ -88,7 +88,7 @@ void kernel_init(void)
 
     thread_create(main_stack, sizeof(main_stack),
             THREAD_PRIORITY_MAIN,
-            THREAD_CREATE_WOUT_YIELD | THREAD_CREATE_STACKTEST,
+            THREAD_CREATE_WOUT_YIELD | THREAD_CREATE_STACKTEST | THREAD_CREATE_REENT,
             main_trampoline, NULL, main_name);
 
     cpu_switch_context_exit();
