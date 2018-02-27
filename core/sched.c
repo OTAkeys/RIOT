@@ -147,7 +147,7 @@ int __attribute__((used)) sched_run(void)
 #endif
 
 #ifdef MODULE_NEWLIB_THREAD_SAFE
-    _impure_ptr = &(next_thread->newlib_reent);
+    _impure_ptr = next_thread->newlib_reent;
 #endif
 
     DEBUG("sched_run: done, changed sched_active_thread.\n");
