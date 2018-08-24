@@ -57,6 +57,7 @@ extern "C"
  * @name    xtimer configuration
  * @{
  */
+#ifndef MODULE_ZTIMER
 #if KINETIS_XTIMER_SOURCE_PIT
 /* PIT xtimer configuration */
 #define XTIMER_DEV                  (TIMER_PIT_DEV(0))
@@ -73,6 +74,7 @@ extern "C"
 #define XTIMER_OVERHEAD             (4)
 #define XTIMER_HZ                   (32768ul)
 #endif
+#endif /* MODULE_ZTIMER */
 /** @} */
 
 /**
