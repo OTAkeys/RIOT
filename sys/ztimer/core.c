@@ -107,6 +107,8 @@ static void _update_head_offset(ztimer_dev_t *ztimer)
                 }
             }
         } while (diff && entry);
+        DEBUG("ztimer %p: _update_head_offset(): now=%" PRIu32 " new head %p offset %" PRIu32 "\n",
+            (void *)ztimer, now, (void *)entry, entry->offset);
     }
 
     ztimer->list.offset = now;
@@ -187,4 +189,3 @@ static void _ztimer_print(ztimer_dev_t *ztimer)
     } while ((entry = entry->next));
     puts("");
 }
-
