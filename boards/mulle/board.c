@@ -107,7 +107,7 @@ void board_init(void)
     cpu_init();
 
     /* NVRAM requires xtimer for timing */
-    xtimer_init();
+    //~ xtimer_init();
 
     /* Initialize NVRAM */
     status = mulle_nvram_init();
@@ -132,6 +132,7 @@ static inline void power_pins_init(void)
 
 static int mulle_nvram_init(void)
 {
+    return 1;
     union {
         uint32_t u32;
         uint8_t  u8[sizeof(uint32_t)];

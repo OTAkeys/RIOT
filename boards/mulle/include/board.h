@@ -41,7 +41,8 @@
  * @name    xtimer configuration
  * @{
  */
-#if 0
+#ifndef MODULE_ZTIMER
+#if !KINETIS_XTIMER_SOURCE_PIT
 /* LPTMR xtimer configuration */
 /* WIP, Use PIT for now */
 #define XTIMER_DEV                  (TIMER_LPTMR_DEV(0))
@@ -59,6 +60,7 @@
 #define XTIMER_ISR_BACKOFF          (40)
 #define XTIMER_OVERHEAD             (30)
 #endif
+#endif /* MODULE_ZTIMER */
 /** @} */
 
 /**

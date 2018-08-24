@@ -20,4 +20,10 @@ ifneq (,$(filter saul_default,$(USEMODULE)))
   USEMODULE += saul_adc
 endif
 
+ifneq (,$(filter ztimer,$(USEMODULE)))
+  USEMODULE += ztimer_periph
+  USEMODULE += ztimer_convert
+  USEMODULE += ztimer_extend
+endif
+
 include $(RIOTCPU)/kinetis/Makefile.dep
