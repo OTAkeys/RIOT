@@ -34,7 +34,7 @@ typedef struct ztimer_base ztimer_base_t;
 /**
  * @brief ztimer_dev_t forward declaration
  */
-typedef struct ztimer_instance ztimer_dev_t;
+typedef struct ztimer_dev ztimer_dev_t;
 
 /**
  * @brief   Minimum information for each timer
@@ -60,17 +60,20 @@ typedef struct {
     void(*set)(ztimer_dev_t *ztimer, uint32_t val);
     uint32_t(*now)(ztimer_dev_t *ztimer);
     void(*cancel)(ztimer_dev_t *ztimer);
-    void(*trigger)(ztimer_dev_t *instance, ztimer_base_t *timer);
+    void(*trigger)(ztimer_dev_t *dev, ztimer_base_t *timer);
 } ztimer_ops_t;
 
 /**
- * @brief   ztimer instance (backend) structure
+ * @brief   ztimer device structure
  */
-struct ztimer_instance {
+struct ztimer_dev {
     ztimer_base_t list;         /**< list of active timers          */
     const ztimer_ops_t *ops;    /**< ptr to methods structure       */
 };
 
+/**
+ * @brief   main ztimer callback handler
+ */
 void ztimer_handler(ztimer_dev_t *ztimer);
 
 /* User API */
@@ -78,8 +81,8 @@ void ztimer_set(ztimer_dev_t *ztimer, ztimer_t *entry, uint32_t val);
 void ztimer_remove(ztimer_dev_t *ztimer, ztimer_t *entry);
 
 uint64_t ztimer_now64(void);
-void ztimer_set_msg(ztimer_dev_t *instance, ztimer_t *timer, uint32_t offset, msg_t *msg, kernel_pid_t target_pid);
-int ztimer_msg_receive_timeout(ztimer_dev_t *instance, msg_t *msg, uint32_t timeout);
+void ztimer_set_msg(ztimer_dev_t *dev, ztimer_t *timer, uint32_t offset, msg_t *msg, kernel_pid_t target_pid);
+int ztimer_msg_receive_timeout(ztimer_dev_t *dev, msg_t *msg, uint32_t timeout);
 
 static inline uint32_t ztimer_now(ztimer_dev_t *ztimer)
 {
@@ -93,7 +96,7 @@ uint32_t ztimer_diff(ztimer_dev_t *ztimer, uint32_t base);
 
 void ztimer_board_init(void);
 
-/* default ztimer instances */
+/* default ztimer virtual devices */
 extern ztimer_dev_t *const ZTIMER_USEC;
 extern ztimer_dev_t *const ZTIMER_MSEC;
 
