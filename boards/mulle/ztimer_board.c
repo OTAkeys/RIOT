@@ -31,8 +31,8 @@ static ztimer_periph_t _ztimer_lptmr;
 static ztimer_convert_t _ztimer_lptmr_convert;
 static ztimer_extend_t _ztimer_lptmr_extend;
 
-ztimer_instance_t *const ZTIMER_USEC = (ztimer_instance_t*) &_ztimer_pit;
-ztimer_instance_t *const ZTIMER_MSEC = (ztimer_instance_t*) &_ztimer_lptmr_extend;
+ztimer_dev_t *const ZTIMER_USEC = (ztimer_dev_t*) &_ztimer_pit;
+ztimer_dev_t *const ZTIMER_MSEC = (ztimer_dev_t*) &_ztimer_lptmr_extend;
 
 void ztimer_board_init(void)
 {
@@ -41,6 +41,6 @@ void ztimer_board_init(void)
     DEBUG("ztimer_board_init(): ZTIMER_US diff=%"PRIu32"\n", _ztimer_pit.adjust);
 
     ztimer_periph_init(&_ztimer_lptmr, TIMER_LPTMR_DEV(0), 32768lu);
-    ztimer_convert_init(&_ztimer_lptmr_convert, (ztimer_instance_t*)&_ztimer_lptmr, 125, 4096);
-    ztimer_extend_init(&_ztimer_lptmr_extend, (ztimer_instance_t*)&_ztimer_lptmr_convert, 22);
+    ztimer_convert_init(&_ztimer_lptmr_convert, (ztimer_dev_t*)&_ztimer_lptmr, 125, 4096);
+    ztimer_extend_init(&_ztimer_lptmr_extend, (ztimer_dev_t*)&_ztimer_lptmr_convert, 22);
 }
