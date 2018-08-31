@@ -79,15 +79,13 @@ static void _add_ztimer_to_list(ztimer_dev_t *ztimer, ztimer_base_t *entry)
     }
 
     entry->next = list->next;
-    if (list->next) {
-        ztimer_base_t *next_entry = list->next;
-        next_entry->offset += delta_sum;
-        next_entry->offset -= entry->offset;
-    }
     entry->offset -= delta_sum;
+    if (entry->next) {
+        entry->next->offset -= entry->offset;
+    }
+    list->next = entry;
     DEBUG("_add_ztimer_to_list() %p offset %"PRIu32"\n", (void *)entry, entry->offset);
 
-    list->next = entry;
 }
 
 static void _update_head_offset(ztimer_dev_t *ztimer)
@@ -111,7 +109,7 @@ static void _update_head_offset(ztimer_dev_t *ztimer)
                     /* skip timers with offset==0 */
                     do {
                         entry = entry->next;
-                    } while (entry && entry->offset == 0);
+                    } while (entry && (entry->offset == 0));
                 }
             }
         } while (diff && entry);
