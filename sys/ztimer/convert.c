@@ -1,3 +1,11 @@
+/*
+ * Copyright (C) 2018 Kaspar Schleiser <kaspar@schleiser.de>
+ *
+ * This file is subject to the terms and conditions of the GNU Lesser General
+ * Public License v2.1. See the file LICENSE in the top level directory for more
+ * details.
+ */
+
 #include "ztimer/convert.h"
 
 static uint32_t _convert_set(ztimer_convert_t *ztimer_convert, uint32_t val)

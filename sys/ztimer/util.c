@@ -1,3 +1,11 @@
+/*
+ * Copyright (C) 2018 Kaspar Schleiser <kaspar@schleiser.de>
+ *
+ * This file is subject to the terms and conditions of the GNU Lesser General
+ * Public License v2.1. See the file LICENSE in the top level directory for more
+ * details.
+ */
+
 #include <assert.h>
 
 #include "mutex.h"
@@ -96,4 +104,3 @@ int ztimer_msg_receive_timeout(ztimer_dev_t *dev, msg_t *msg, uint32_t timeout)
         return 1;
     }
 }
-
