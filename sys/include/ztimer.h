@@ -9,7 +9,29 @@
 /**
  * @defgroup    sys_ztimer ztimer
  * @ingroup     sys
- * @brief       Provides a flexible timer API
+ * @brief       High level timer abstraction layer
+ *
+ * ztimer provides a high level abstraction of hardware timers for application
+ * timing needs.
+ *
+ * The system is composed of ztimer objects which can be chained to create
+ * an abstract view of a hardware timer. Each ztimer object acts as a filter on
+ * the next object. At the end of each ztimer chain there is always some kind of
+ * timer device object.
+ *
+ * TODO: Add block diagram figures
+ *
+ * Hardware interface submodules:
+ *
+ * - @ref ztimer_rtt_init "ztimer_rtt" interface for periph_rtt
+ * - @ref ztimer_periph_init "ztimer_periph" interface for periph_timer
+ *
+ * Filter submodules:
+ *
+ * - @ref ztimer_extend_init "ztimer_extend" for hardware timer width extension
+ * - @ref ztimer_convert_init "ztimer_convert" for frequency conversion
+ * - @ref ztimer_dynfreq_init "ztimer_dynfreq" runtime adjustable frequency conversion
+ * - @ref ztimer_utc_init "ztimer_utc" interface for clock synchronization libraries
  *
  * @{
  *
@@ -46,6 +68,9 @@ struct ztimer_base {
 
 /**
  * @brief   ztimer structure
+ *
+ * This type represents an instance of an alarm, which is set on an
+ * underlying clock object
  */
 typedef struct {
     ztimer_base_t base;         /**< timer list entry               */
@@ -55,6 +80,10 @@ typedef struct {
 
 /**
  * @brief   ztimer backend method structure
+ *
+ * This table contains pointers to the virtual methods for a ztimer clock
+ *
+ * These functions used by ztimer core to interact with the underlying clock.
  */
 typedef struct {
     void(*set)(ztimer_dev_t *ztimer, uint32_t val);
@@ -77,7 +106,32 @@ struct ztimer_dev {
 void ztimer_handler(ztimer_dev_t *ztimer);
 
 /* User API */
+/**
+ * @brief   Set an alarm on a clock
+ *
+ * This will place @p entry in the alarm targets queue for @p ztimer.
+ *
+ * @note The memory pointed to by @p entry is not copied and must 
+ *       remain in scope until the callback is fired or the alarm 
+ *       is removed via @ref ztimer_remove
+ *
+ * @param[in]   ztimer      ztimer clock to operate on
+ * @param[in]   entry       alarm entry to enqueue
+ * @param[in]   val         alarm target
+ */
 void ztimer_set(ztimer_dev_t *ztimer, ztimer_t *entry, uint32_t val);
+
+/**
+ * @brief   Remove an alarm from a clock
+ *
+ * This will place @p entry in the timer targets queue for @p ztimer.
+ * 
+ * This function does nothing if @p entry is not found in the alarm queue of @p ztimer
+ *
+ * @param[in]   ztimer      ztimer clock to operate on
+ * @param[in]   entry       alarm entry to enqueue
+ * @param[in]   val         alarm target
+ */
 void ztimer_remove(ztimer_dev_t *ztimer, ztimer_t *entry);
 
 uint64_t ztimer_now64(void);
@@ -92,6 +146,7 @@ static inline uint32_t ztimer_now(ztimer_dev_t *ztimer)
 void ztimer_periodic_wakeup(ztimer_dev_t *ztimer, uint32_t *last_wakeup, uint32_t period);
 void ztimer_sleep(ztimer_dev_t *ztimer, uint32_t duration);
 
+/* TODO is this overhead calibration?? */
 uint32_t ztimer_diff(ztimer_dev_t *ztimer, uint32_t base);
 
 void ztimer_board_init(void);
