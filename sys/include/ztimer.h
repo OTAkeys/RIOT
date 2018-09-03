@@ -7,7 +7,7 @@
  */
 
 /**
- * @defgroup    sys_ztimer ztimer
+ * @defgroup    sys_ztimer ztimer high level timer abstraction layer
  * @ingroup     sys
  * @brief       High level timer abstraction layer
  *
