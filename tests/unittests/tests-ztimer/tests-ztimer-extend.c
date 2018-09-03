@@ -76,6 +76,33 @@ static void test_ztimer_extend_now_rollover(void)
 }
 
 /**
+ * @brief   Regression test for a bug where the ztimer_extend module became
+ *          stuck in an endless loop when lower_now = (lower_clock_period - 1)
+ */
+static void test_ztimer_extend_regr_lower_mask(void)
+{
+    ztimer_mock_t zmock;
+    ztimer_extend_t zx;
+    ztimer_dev_t *z = &zx.super;
+
+    ztimer_mock_init(&zmock, 8);
+    ztimer_extend_init(&zx, &zmock.super, 8);
+    uint32_t now = ztimer_now(z);
+    ztimer_mock_advance(&zmock, 127);
+    now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(127, now);
+    ztimer_mock_advance(&zmock, 1);
+    now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(128, now);
+    ztimer_mock_advance(&zmock, 127);
+    now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(255, now);
+    ztimer_mock_advance(&zmock, 1);
+    now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(256, now);
+}
+
+/**
  * @brief   Testing long alarms on an 32 bit extended 8 bit clock
  */
 static void test_ztimer_extend_set_long(void)
@@ -143,6 +170,7 @@ Test *tests_ztimer_extend_tests(void)
 {
     EMB_UNIT_TESTFIXTURES(fixtures) {
         new_TestFixture(test_ztimer_extend_now_rollover),
+        new_TestFixture(test_ztimer_extend_regr_lower_mask),
         new_TestFixture(test_ztimer_extend_set_long),
         new_TestFixture(test_ztimer_extend_set_rollover),
     };
