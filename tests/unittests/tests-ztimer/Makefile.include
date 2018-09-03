@@ -1,0 +1,5 @@
+USEMODULE += ztimer
+USEMODULE += ztimer_core
+USEMODULE += ztimer_mock
+USEMODULE += ztimer_convert
+USEMODULE += ztimer_extend
