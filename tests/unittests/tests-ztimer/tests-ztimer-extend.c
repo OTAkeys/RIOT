@@ -111,11 +111,40 @@ static void test_ztimer_extend_set_long(void)
     TEST_ASSERT_EQUAL_INT(nalarms * 1000, now);
 }
 
+/**
+ * @brief   Testing alarms around the lower timer rollover
+ */
+static void test_ztimer_extend_set_rollover(void)
+{
+    ztimer_mock_t zmock;
+    ztimer_extend_t zx;
+    ztimer_dev_t *z = &zx.super;
+
+    ztimer_mock_init(&zmock, 4);
+    ztimer_extend_init(&zx, &zmock.super, 4);
+    uint32_t now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(0, now);
+    ztimer_mock_advance(&zmock, 7); /* now =  7 ( 7)*/
+    ztimer_mock_advance(&zmock, 8); /* now = 15 (15)*/
+    uint32_t count = 0;
+    ztimer_t alarm = { .callback = cb_incr, .arg = &count, };
+    ztimer_set(z, &alarm, 5); /* target = 20 ( 4) */
+    ztimer_mock_advance(&zmock,  1); /* now = 16 ( 0) */
+    TEST_ASSERT_EQUAL_INT(0, count);
+    ztimer_mock_advance(&zmock,  3); /* now = 19 ( 3) */
+    TEST_ASSERT_EQUAL_INT(0, count);
+    ztimer_mock_advance(&zmock,  1); /* now = 20 ( 4) */
+    TEST_ASSERT_EQUAL_INT(1, count);
+    now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(20, now);
+}
+
 Test *tests_ztimer_extend_tests(void)
 {
     EMB_UNIT_TESTFIXTURES(fixtures) {
         new_TestFixture(test_ztimer_extend_now_rollover),
         new_TestFixture(test_ztimer_extend_set_long),
+        new_TestFixture(test_ztimer_extend_set_rollover),
     };
 
     EMB_UNIT_TESTCALLER(ztimer_tests, NULL, NULL, fixtures);
