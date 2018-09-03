@@ -103,6 +103,27 @@ static void test_ztimer_extend_regr_lower_mask(void)
 }
 
 /**
+ * @brief   Regression test for a bug where the ztimer_extend module did not
+ * update correctly without a call to ztimer_now between each rollover
+ */
+static void test_ztimer_extend_regr_multiple_rollover(void)
+{
+    ztimer_mock_t zmock;
+    ztimer_extend_t zx;
+    ztimer_dev_t *z = &zx.super;
+
+    ztimer_mock_init(&zmock, 4);
+    ztimer_extend_init(&zx, &zmock.super, 4);
+    uint32_t now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(0, now);
+    for (unsigned k = 0; k < 16; ++k) {
+        ztimer_mock_advance(&zmock, 3);
+    }
+    now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(16 * 3, now);
+}
+
+/**
  * @brief   Testing long alarms on an 32 bit extended 8 bit clock
  */
 static void test_ztimer_extend_set_long(void)
@@ -171,6 +192,7 @@ Test *tests_ztimer_extend_tests(void)
     EMB_UNIT_TESTFIXTURES(fixtures) {
         new_TestFixture(test_ztimer_extend_now_rollover),
         new_TestFixture(test_ztimer_extend_regr_lower_mask),
+        new_TestFixture(test_ztimer_extend_regr_multiple_rollover),
         new_TestFixture(test_ztimer_extend_set_long),
         new_TestFixture(test_ztimer_extend_set_rollover),
     };
