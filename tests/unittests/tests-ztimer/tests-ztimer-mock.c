@@ -183,9 +183,9 @@ static void test_ztimer_mock_set32(void)
     TEST_ASSERT_EQUAL_INT(4000004000ul, now);
     TEST_ASSERT_EQUAL_INT(3, count);
     ztimer_set(z, &alarm, 15);
-    ztimer_mock_advance(&zmock,  14);    /* now = 3000*/
+    ztimer_mock_advance(&zmock,  14);
     ztimer_remove(z, &alarm);
-    ztimer_mock_advance(&zmock,   1);    /* now = 3000*/
+    ztimer_mock_advance(&zmock, 1000);
     TEST_ASSERT_EQUAL_INT(3, count);
 }
 
