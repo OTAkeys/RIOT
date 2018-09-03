@@ -1,11 +1,26 @@
 /*
- * Copyright (C) 2018 Kaspar Schleiser <kaspar@schleiser.de>
+ * Copyright (C) 2018 Eistec AB
  *
  * This file is subject to the terms and conditions of the GNU Lesser General
  * Public License v2.1. See the file LICENSE in the top level directory for more
  * details.
  */
 
+/**
+ * @ingroup     sys_ztimer
+ *
+ * @{
+ *
+ * @file
+ * @brief       ztimer_extend implementation
+ *
+ * @author      Joakim Nohlgård <joakim.nohlgard@eistec.se>
+ *
+ * @}
+ */
+
+#include <stdint.h>
+#include <stdatomic.h>
 #include <inttypes.h>
 
 #include "ztimer/extend.h"
@@ -13,117 +28,147 @@
 #define ENABLE_DEBUG (0)
 #include "debug.h"
 
-static void _ztimer_extend_cancel(ztimer_dev_t *ztimer);
-static void _ztimer_extend_overflow_callback(void* arg);
-static void _ztimer_extend_update(ztimer_extend_t *ztimer_extend);
+/**
+ * @brief   Callback for alarm target in the lower clock
+ *
+ * @param[in]   arg     pointer to the owner @ref ztimer_extend_t instance
+ */
+static void ztimer_extend_alarm_callback(void* arg);
 
-static void _ztimer_extend_callback(void* arg)
+/**
+ * @brief   Callback for partition update in the lower clock
+ *
+ * This will be scheduled in the lower clock at @ref ztimer_extend_t::partition_size intervals
+ *
+ * @param[in]   arg     pointer to the owner @ref ztimer_extend_t instance
+ */
+static void ztimer_extend_overflow_callback(void* arg);
+
+/**
+ * @brief   Update the ztimer queue for the lower clock
+ *
+ * @param[in]   self        instance to operate on
+ */
+static void ztimer_extend_update(ztimer_extend_t *self);
+
+/**
+ * @brief   Check for partition transitions and update origin accordingly
+ *
+ * @param[in]   self        instance to operate on
+ *
+ * @return  current extended counter value
+ */
+static uint32_t ztimer_extend_checkpoint(ztimer_extend_t *self);
+
+static void ztimer_extend_alarm_callback(void* arg)
 {
-    ztimer_extend_t *ztimer_extend = (ztimer_extend_t*) arg;
-    DEBUG("_ztimer_extend_callback()\n");
-    ztimer_handler(&ztimer_extend->super);
+    ztimer_extend_t *self = (ztimer_extend_t *)arg;
+    DEBUG("ztimer_extend_alarm_callback()\n");
+    ztimer_handler(&self->super);
 }
 
-static void _ztimer_extend_update(ztimer_extend_t *ztimer_extend)
+static void ztimer_extend_overflow_callback(void* arg)
 {
-    unsigned shift = ztimer_extend->shift;
-    uint32_t target = ztimer_extend->super.list.offset + ztimer_extend->super.list.next->offset;
-    uint32_t masked_tgt = target & (0xffffffff << shift);
-    uint32_t now = ztimer_now((ztimer_dev_t*)ztimer_extend);
-    uint32_t masked_now = now & (0xffffffff << shift);
+    ztimer_extend_t *self = (ztimer_extend_t *)arg;
+    DEBUG("ztimer_extend_overflow_callback()\n");
 
-    if (masked_now == masked_tgt) {
-        if (now < target) {
-            target -= now;
-        }
-        else {
-            target = 0;
-        }
-        target &= (0xffffffff >> shift);
-        DEBUG("_ztimer_extend_update() now=%"PRIu32" masked=%"PRIu32" offset=%"PRIu32" tgt=%"PRIu32"\n",
-                ztimer_now((ztimer_dev_t*)ztimer_extend),
-                masked_now,
-                ztimer_extend->super.list.next->offset, target);
+    /* Update origin and update targets */
+    ztimer_extend_update(self);
+    /* Ensure that there is always at least one alarm target inside
+     * each partition, in order to always detect timer rollover */
+    ztimer_set(self->lower, &self->lower_overflow_entry, self->partition_mask + 1);
+}
 
-        ztimer_set(ztimer_extend->parent, &ztimer_extend->parent_entry, target);
+static void ztimer_extend_update(ztimer_extend_t *self)
+{
+    /* Keep origin up to date even when no target is set */
+    uint32_t now = ztimer_extend_checkpoint(self);
+    if (!self->super.list.next) {
+        return;
     }
-}
-
-static void _ztimer_extend_overflow_callback(void* arg)
-{
-    ztimer_extend_t *ztimer_extend = (ztimer_extend_t*) arg;
-
-    ztimer_extend->overflows++;
-
-    /* calculate and set interval to end of next half-period */
-    uint32_t target = (0xffffffff - ztimer_now(ztimer_extend->parent)) & (0xffffffff >> (32 - ztimer_extend->shift + 1));
-    ztimer_set(ztimer_extend->parent, &ztimer_extend->parent_overflow_entry, target);
-
-    if (ztimer_extend->super.list.next) {
-        _ztimer_extend_update(ztimer_extend);
+    uint32_t next_target = self->super.list.offset + self->super.list.next->offset;
+    uint32_t target_period = (next_target & ~(self->lower_max));
+    uint32_t now_period = (now & ~(self->lower_max));
+    if (now_period != target_period) {
+        /* Await counter rollover first */
+        return;
     }
+    next_target -= now;
+    DEBUG("zx: set lower_alarm %p, target=%" PRIu32 "\n",
+        (void *)&self->lower_alarm_entry, next_target);
+    ztimer_set(self->lower, &self->lower_alarm_entry, next_target);
 }
 
-static void _ztimer_extend_set(ztimer_dev_t *ztimer, uint32_t val)
+static uint32_t ztimer_extend_checkpoint(ztimer_extend_t *self)
+{
+    uint32_t origin;
+    uint32_t lower_now;
+    uint32_t old_origin;
+    do {
+        do {
+            old_origin = self->origin;
+            lower_now = ztimer_now(self->lower);
+            origin = self->origin;
+        } while (origin != old_origin);
+        uint32_t partition = (lower_now & ~(self->partition_mask));
+        uint32_t old_partition = (old_origin & self->lower_max);
+        if (partition != old_partition) {
+            origin += (partition - old_partition) & (self->lower_max);
+            if (!atomic_compare_exchange_strong(&self->origin, &old_origin, origin)) {
+                continue;
+            }
+        }
+        break;
+    } while (1);
+    /* lower_now and origin should have the same partition bits at this point */
+    uint32_t now = (origin | lower_now);
+    DEBUG("zx: now=%" PRIu32 "\n", now);
+    return now;
+}
+
+static void ztimer_extend_op_set(ztimer_dev_t *z, uint32_t val)
 {
     (void)val;
+    ztimer_extend_t *self = (ztimer_extend_t *)z;
 
-    ztimer_extend_t *ztimer_extend = (ztimer_extend_t*) ztimer;
-
-    DEBUG("_ztimer_extend_set() val=%"PRIu32" overflows=%"PRIu32"\n", val,
-            ztimer_extend->overflows);
-
-    _ztimer_extend_update(ztimer_extend);
+    ztimer_extend_update(self);
 }
 
-static void _ztimer_extend_cancel(ztimer_dev_t *ztimer)
+static void ztimer_extend_op_cancel(ztimer_dev_t *z)
 {
-    ztimer_extend_t *ztimer_extend = (ztimer_extend_t*) ztimer;
-    ztimer_remove(ztimer_extend->parent, &ztimer_extend->parent_entry);
+    ztimer_extend_t *self = (ztimer_extend_t *) z;
+    ztimer_remove(self->lower, &self->lower_alarm_entry);
 }
 
-static uint32_t _ztimer_extend_now(ztimer_dev_t *ztimer)
+static uint32_t ztimer_extend_op_now(ztimer_dev_t *z)
 {
-    ztimer_extend_t *ztimer_extend = (ztimer_extend_t*) ztimer;
-
-    uint32_t low;
-    uint32_t overflows;
-    unsigned shift = ztimer_extend->shift;
-
-    do {
-        overflows = ztimer_extend->overflows;
-        low = ztimer_now(ztimer_extend->parent) & (0xffffffff >> (32 - shift));
-    } while (overflows != ztimer_extend->overflows);
-
-    uint32_t res = (overflows << (shift-1)) | low;
-
-    if ((overflows & 1) && !(low >> (shift-1))) {
-        res += 1 << (shift - 1);
-    }
-
-    return res;
+    ztimer_extend_t *self = (ztimer_extend_t *) z;
+    return ztimer_extend_checkpoint(self);
 }
 
-static const ztimer_ops_t _ztimer_extend_ops = {
-    .set=_ztimer_extend_set,
-    .now=_ztimer_extend_now,
-    .cancel=_ztimer_extend_cancel,
+static const ztimer_ops_t ztimer_extend_ops = {
+    .set    = ztimer_extend_op_set,
+    .now    = ztimer_extend_op_now,
+    .cancel = ztimer_extend_op_cancel,
 };
 
-void ztimer_extend_init(ztimer_extend_t *ztimer_extend, ztimer_dev_t *parent, unsigned shift)
+void ztimer_extend_init(ztimer_extend_t *self, ztimer_dev_t *lower, unsigned lower_width)
 {
-    uint32_t now = ztimer_now(parent);
-    ztimer_extend_t tmp = {
-        .shift = shift,
-        .parent = parent,
-        .super.ops=&_ztimer_extend_ops,
-        .parent_entry.callback=_ztimer_extend_callback,
-        .parent_entry.arg=ztimer_extend,
-        .parent_overflow_entry.callback=_ztimer_extend_overflow_callback,
-        .parent_overflow_entry.arg=ztimer_extend,
-        .overflows=((now >> (shift - 1)) & 1)
+    uint32_t now = ztimer_now(lower);
+    uint32_t lower_max = (1ul << lower_width) - 1;
+    *self = (ztimer_extend_t) {
+        .super = { .ops = &ztimer_extend_ops, },
+        .lower = lower,
+        .lower_alarm_entry = { .callback = ztimer_extend_alarm_callback, .arg = self, },
+        .lower_overflow_entry = { .callback = ztimer_extend_overflow_callback, .arg = self, },
+        .lower_max = lower_max,
+        .partition_mask = (lower_max >> 2),
     };
+    self->origin = now & ~(self->partition_mask);
+    DEBUG("zx_init: %p lower=%p lower_max=0x%08" PRIx32 " partition_mask=0x%08" PRIx32 "\n",
+        (void *)self, (void *)lower, lower_max, self->partition_mask);
 
-    *ztimer_extend = tmp;
-    ztimer_set(parent, &ztimer_extend->parent_overflow_entry, 1 << (shift - 1));
+    /* Ensure that there is always at least one alarm target inside
+     * each partition, in order to always detect timer rollover */
+    ztimer_set(lower, &self->lower_overflow_entry, self->partition_mask + 1);
 }
