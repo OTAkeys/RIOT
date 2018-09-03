@@ -85,9 +85,10 @@ static void _update_head_offset(ztimer_dev_t *ztimer)
     uint32_t now = ztimer->ops->now(ztimer);
     uint32_t diff = now - old_base;
 
-    if (ztimer->list.next) {
-        ztimer_base_t *entry = ztimer->list.next;
-
+    ztimer_base_t *entry = ztimer->list.next;
+    DEBUG("ztimer %p: _update_head_offset(): diff=%" PRIu32 " old head %p\n",
+        (void *)ztimer, diff, (void *)entry);
+    if (entry) {
         do {
             if (diff <= entry->offset) {
                 entry->offset -= diff;
@@ -104,8 +105,14 @@ static void _update_head_offset(ztimer_dev_t *ztimer)
                 }
             }
         } while (diff && entry);
-        DEBUG("ztimer %p: _update_head_offset(): now=%" PRIu32 " new head %p offset %" PRIu32 "\n",
-            (void *)ztimer, now, (void *)entry, entry->offset);
+        DEBUG("ztimer %p: _update_head_offset(): now=%" PRIu32 " new head %p",
+            (void *)ztimer, now, (void *)entry);
+        if (entry) {
+            DEBUG(" offset %" PRIu32 "\n", entry->offset);
+        }
+        else {
+            DEBUG("\n");
+        }
     }
 
     ztimer->list.offset = now;
