@@ -145,9 +145,6 @@ void ztimer_set(ztimer_dev_t *ztimer, ztimer_t *entry, uint32_t val);
  */
 void ztimer_remove(ztimer_dev_t *ztimer, ztimer_t *entry);
 
-/* TODO what is this? */
-uint64_t ztimer_now64(void);
-
 /**
  * @brief   Post a message after a delay
  *

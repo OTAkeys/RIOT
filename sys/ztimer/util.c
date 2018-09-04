@@ -56,14 +56,6 @@ void ztimer_periodic_wakeup(ztimer_dev_t *ztimer, uint32_t *last_wakeup, uint32_
     }
 }
 
-static uint64_t _ztimer_now64_offset = 0;
-uint64_t ztimer_now64(void)
-{
-    /* TODO: actually set offset, e.g., on overflow */
-    return ztimer_now(ZTIMER_USEC) + _ztimer_now64_offset;
-}
-
-
 static void _callback_msg(void* arg)
 {
     msg_t *msg = (msg_t*)arg;
