@@ -67,25 +67,28 @@ void ztimer_mock_fire(ztimer_mock_t *self)
 static void ztimer_mock_op_set(ztimer_dev_t *dev, uint32_t val)
 {
     ztimer_mock_t *self = (ztimer_mock_t*)dev;
+    ++self->calls.set;
     self->target = val & self->mask;
     self->armed = 1;
-    DEBUG("zmock_set: now=0x%08" PRIx32 ", target=0x%08" PRIx32 " (%u)\n",
-        self->now, self->target, self->armed);
+    DEBUG("zmock_set:    %3u now=0x%08" PRIx32 ", target=0x%08" PRIx32 " (%u)\n",
+        self->calls.set, self->now, self->target, self->armed);
 }
 
 static uint32_t ztimer_mock_op_now(ztimer_dev_t *dev)
 {
     ztimer_mock_t *self = (ztimer_mock_t*)dev;
-    DEBUG("zmock_now: now=0x%08" PRIx32 ", target=0x%08" PRIx32 " (%u)\n",
-        self->now, self->target, self->armed);
+    ++self->calls.now;
+    DEBUG("zmock_now:    %3u now=0x%08" PRIx32 ", target=0x%08" PRIx32 " (%u)\n",
+        self->calls.now, self->now, self->target, self->armed);
     return self->now;
 }
 
 static void ztimer_mock_op_cancel(ztimer_dev_t *dev)
 {
     ztimer_mock_t *self = (ztimer_mock_t*)dev;
-    DEBUG("zmock_cancel: now=0x%08" PRIx32 ", target=0x%08" PRIx32 " (%u)\n",
-        self->now, self->target, self->armed);
+    ++self->calls.cancel;
+    DEBUG("zmock_cancel: %3u now=0x%08" PRIx32 ", target=0x%08" PRIx32 " (%u)\n",
+        self->calls.cancel, self->now, self->target, self->armed);
     self->armed = 0;
 }
 
