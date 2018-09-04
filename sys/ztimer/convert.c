@@ -7,63 +7,45 @@
  */
 
 #include "ztimer/convert.h"
+#include "frac.h"
+#include "assert.h"
 
-static uint32_t _convert_set(ztimer_convert_t *ztimer_convert, uint32_t val)
+static void ztimer_convert_op_cancel(ztimer_dev_t *z)
 {
-    if (ztimer_convert->mul > 1) {
-        val *= ztimer_convert->mul;
-    }
-    if (ztimer_convert->div > 1) {
-        val /= ztimer_convert->div;
-    }
-    return val;
+    ztimer_convert_t *self = (ztimer_convert_t *)z;
+    ztimer_remove(self->lower, &self->lower_entry);
 }
 
-static uint32_t _convert_now(ztimer_convert_t *ztimer_convert, uint32_t val)
+static void ztimer_convert_op_set(ztimer_dev_t *z, uint32_t val)
 {
-    if (ztimer_convert->div > 1) {
-        val *= ztimer_convert->div;
-    }
-    if (ztimer_convert->mul > 1) {
-        val /= ztimer_convert->mul;
-    }
-    return val;
+    ztimer_convert_t *self = (ztimer_convert_t *)z;
+    uint32_t target_lower = frac_scale(&self->scale_set, val);
+    ztimer_set(self->lower, &self->lower_entry, target_lower);
 }
 
-static void _ztimer_convert_cancel(ztimer_dev_t *ztimer)
+static uint32_t ztimer_convert_op_now(ztimer_dev_t *z)
 {
-    ztimer_convert_t *ztimer_convert = (ztimer_convert_t*) ztimer;
-    ztimer_remove(ztimer_convert->parent, &ztimer_convert->parent_entry);
+    ztimer_convert_t *self = (ztimer_convert_t *)z;
+    uint32_t now_lower = ztimer_now(self->lower);
+    uint32_t now_self = frac_scale(&self->scale_now, now_lower);
+    return now_self;
 }
 
-static void _ztimer_convert_set(ztimer_dev_t *ztimer, uint32_t val)
-{
-    ztimer_convert_t *ztimer_convert = (ztimer_convert_t*) ztimer;
-    ztimer_set(ztimer_convert->parent, &ztimer_convert->parent_entry, _convert_set(ztimer_convert, val));
-}
-
-static uint32_t _ztimer_convert_now(ztimer_dev_t *ztimer)
-{
-    ztimer_convert_t *ztimer_convert = (ztimer_convert_t*) ztimer;
-    return _convert_now(ztimer_convert, ztimer_now(ztimer_convert->parent));
-}
-
-static const ztimer_ops_t _ztimer_convert_ops = {
-    .set=_ztimer_convert_set,
-    .now=_ztimer_convert_now,
-    .cancel=_ztimer_convert_cancel,
+static const ztimer_ops_t ztimer_convert_ops = {
+    .set    = ztimer_convert_op_set,
+    .now    = ztimer_convert_op_now,
+    .cancel = ztimer_convert_op_cancel,
 };
 
-void ztimer_convert_init(ztimer_convert_t *ztimer_convert, ztimer_dev_t *parent, unsigned mul, unsigned div)
+void ztimer_convert_init(ztimer_convert_t *self, ztimer_dev_t *lower, uint32_t freq_self, uint32_t freq_lower)
 {
-    ztimer_convert_t tmp = {
-        .super.ops=&_ztimer_convert_ops,
-        .parent=parent,
-        .parent_entry.callback=(void (*)(void *))ztimer_handler,
-        .parent_entry.arg=ztimer_convert,
-        .mul = mul,
-        .div = div
+    *self = (ztimer_convert_t) {
+        .super = { .ops = &ztimer_convert_ops, },
+        .lower = lower,
+        .lower_entry = { .callback = (void (*)(void *))ztimer_handler, .arg = &self->super, },
     };
-
-    *ztimer_convert = tmp;
+    assert(freq_self);
+    assert(freq_lower);
+    frac_init(&self->scale_now, freq_self, freq_lower);
+    frac_init(&self->scale_set, freq_lower, freq_self);
 }

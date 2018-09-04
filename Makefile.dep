@@ -796,6 +796,10 @@ ifneq (,$(filter ztimer_%,$(USEMODULE)))
   USEMODULE += ztimer
 endif
 
+ifneq (,$(filter ztimer_convert,$(USEMODULE)))
+  USEMODULE += frac
+endif
+
 ifneq (,$(filter ztimer_periph,$(USEMODULE)))
   FEATURES_REQUIRED += periph_timer
 endif
