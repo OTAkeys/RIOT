@@ -101,9 +101,6 @@ typedef struct {
      * @brief   Cancel any set target
      */
     void(*cancel)(ztimer_dev_t *ztimer);
-
-    /* TODO: What is the purpose of this method? */
-    void(*trigger)(ztimer_dev_t *dev, ztimer_base_t *timer);
 } ztimer_ops_t;
 
 /**
