@@ -40,25 +40,35 @@ static void ztimer_extend_alarm_callback(void* arg);
  *
  * This will be scheduled in the lower clock at @ref ztimer_extend_t::partition_size intervals
  *
+ * @pre Interrupts masked
+ *
  * @param[in]   arg     pointer to the owner @ref ztimer_extend_t instance
  */
 static void ztimer_extend_overflow_callback(void* arg);
 
 /**
+ * @brief   Extend a timestamp from the lower counter to the full width virtual clock
+ *
+ * To prevent data races, the origin value should be confirmed to be the same
+ * before and after the lower counter is sampled. This is however not necessary
+ * if interrupts are disabled beforehand.
+ *
+ * @param[in]   self        instance to operate on
+ * @param[in]   lower_now   counter value in the lower counter
+ * @param[in]   origin      origin value at the time when the lower counter was sampled
+ *
+ * @return  full width extended counter value
+ */
+static uint32_t ztimer_extend_now32(ztimer_extend_t *self, uint32_t lower_now, uint32_t origin);
+
+/**
  * @brief   Update the ztimer queue for the lower clock
+ *
+ * @pre Interrupts masked
  *
  * @param[in]   self        instance to operate on
  */
 static void ztimer_extend_update(ztimer_extend_t *self);
-
-/**
- * @brief   Check for partition transitions and update origin accordingly
- *
- * @param[in]   self        instance to operate on
- *
- * @return  current extended counter value
- */
-static uint32_t ztimer_extend_checkpoint(ztimer_extend_t *self);
 
 static void ztimer_extend_alarm_callback(void* arg)
 {
@@ -70,60 +80,49 @@ static void ztimer_extend_alarm_callback(void* arg)
 static void ztimer_extend_overflow_callback(void* arg)
 {
     ztimer_extend_t *self = (ztimer_extend_t *)arg;
-    DEBUG("ztimer_extend_overflow_callback()\n");
-
     /* Update origin and update targets */
-    ztimer_extend_update(self);
+    uint32_t lower_now = self->lower->list.offset;
+    uint32_t now32 = ztimer_extend_now32(self, lower_now, self->origin);
+    self->origin = now32 & ~(self->partition_mask);
+    DEBUG("zx: partition, origin = 0x%08" PRIx32 "\n", self->origin);
+
     /* Ensure that there is always at least one alarm target inside
      * each partition, in order to always detect timer rollover */
+    /* TODO: This works for the rollover in the lower counter only because of a
+     * peculiarity of the ztimer_core handler which will execute all waiting
+     * timers if the counter moves backwards (unsigned diff with a negative number)
+     * TODO: IMPORTANT Rework this code if the implementation of core.c
+     * _update_head_offset is altered */
     ztimer_set(self->lower, &self->lower_overflow_entry, self->partition_mask + 1);
+
+    /* Update alarms */
+    ztimer_extend_update(self);
+}
+
+static uint32_t ztimer_extend_now32(ztimer_extend_t *self, uint32_t lower_now, uint32_t origin)
+{
+    uint32_t now32 = (lower_now - origin) & self->lower_max;
+    now32 += origin;
+    return now32;
 }
 
 static void ztimer_extend_update(ztimer_extend_t *self)
 {
-    /* Keep origin up to date even when no target is set */
-    uint32_t now = ztimer_extend_checkpoint(self);
     if (!self->super.list.next) {
+        /* No alarms queued */
         return;
     }
-    uint32_t next_target = self->super.list.offset + self->super.list.next->offset;
-    uint32_t target_period = (next_target & ~(self->lower_max));
-    uint32_t now_period = (now & ~(self->lower_max));
-    if (now_period != target_period) {
+    uint32_t lower_now = ztimer_now(self->lower);
+    uint32_t now32 = ztimer_extend_now32(self, lower_now, self->origin);
+    uint32_t target = self->super.list.offset + self->super.list.next->offset;
+    target -= now32;
+    if ((lower_now + target) > self->lower_max) {
         /* Await counter rollover first */
         return;
     }
-    next_target -= now;
     DEBUG("zx: set lower_alarm %p, target=%" PRIu32 "\n",
-        (void *)&self->lower_alarm_entry, next_target);
-    ztimer_set(self->lower, &self->lower_alarm_entry, next_target);
-}
-
-static uint32_t ztimer_extend_checkpoint(ztimer_extend_t *self)
-{
-    uint32_t origin;
-    uint32_t lower_now;
-    uint32_t old_origin;
-    do {
-        do {
-            old_origin = self->origin;
-            lower_now = ztimer_now(self->lower);
-            origin = self->origin;
-        } while (origin != old_origin);
-        uint32_t partition = (lower_now & ~(self->partition_mask));
-        uint32_t old_partition = (old_origin & self->lower_max);
-        if (partition != old_partition) {
-            origin += (partition - old_partition) & (self->lower_max);
-            if (!atomic_compare_exchange_strong(&self->origin, &old_origin, origin)) {
-                continue;
-            }
-        }
-        break;
-    } while (1);
-    /* lower_now and origin should have the same partition bits at this point */
-    uint32_t now = (origin | lower_now);
-    DEBUG("zx: now=%" PRIu32 "\n", now);
-    return now;
+        (void *)&self->lower_alarm_entry, target);
+    ztimer_set(self->lower, &self->lower_alarm_entry, target);
 }
 
 static void ztimer_extend_op_set(ztimer_dev_t *z, uint32_t val)
@@ -143,7 +142,15 @@ static void ztimer_extend_op_cancel(ztimer_dev_t *z)
 static uint32_t ztimer_extend_op_now(ztimer_dev_t *z)
 {
     ztimer_extend_t *self = (ztimer_extend_t *) z;
-    return ztimer_extend_checkpoint(self);
+    uint32_t origin;
+    uint32_t lower_now;
+    do {
+        origin = self->origin;
+        lower_now = ztimer_now(self->lower);
+    } while (origin != self->origin);
+    uint32_t now32 = ztimer_extend_now32(self, lower_now, origin);
+    DEBUG("zx: now = 0x%08" PRIx32 "\n", now32);
+    return now32;
 }
 
 static const ztimer_ops_t ztimer_extend_ops = {
