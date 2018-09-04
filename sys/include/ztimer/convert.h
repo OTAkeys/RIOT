@@ -53,6 +53,14 @@ typedef struct {
      * @brief   Frequency conversion scaling constant from self to lower
      */
     frac_t scale_set;
+    /**
+     * @brief   base count in this counter
+     */
+    uint32_t origin_self;
+    /**
+     * @brief   base count in lower counter
+     */
+    uint32_t origin_lower;
 } ztimer_convert_t;
 
 /**
@@ -64,6 +72,15 @@ typedef struct {
  * @param[in]   freq_lower  frequency of the underlying clock
  */
 void ztimer_convert_init(ztimer_convert_t *self, ztimer_dev_t *lower, uint32_t freq_self, uint32_t freq_lower);
+
+/**
+ * @brief   Change the scaling without affecting the current count
+ *
+ * @param[in]   self        pointer to instance being initialized
+ * @param[in]   freq_self   desired frequency of this clock
+ * @param[in]   freq_lower  frequency of the underlying clock
+ */
+void ztimer_convert_change_rate(ztimer_convert_t *self, uint32_t freq_self, uint32_t freq_lower);
 
 #endif /* ZTIMER_CONVERT_H */
 /** @} */

@@ -47,10 +47,43 @@ static void test_ztimer_convert_now(void)
     TEST_ASSERT_EQUAL_INT(123123, now);
 }
 
+/**
+ * @brief   Test for adjusting conversion rate during runtime
+ */
+static void test_ztimer_convert_change_rate(void)
+{
+    ztimer_mock_t zmock;
+    ztimer_convert_t zc;
+    ztimer_dev_t *z = &zc.super;
+
+    ztimer_mock_init(&zmock, 32);
+    ztimer_convert_init(&zc, &zmock.super, 1000000ul, 1);
+    uint32_t now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(0, now);
+    ztimer_mock_advance(&zmock, 1);
+    now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(1000000ul, now);
+    ztimer_convert_change_rate(&zc, 31765, 10000);
+    ztimer_mock_advance(&zmock, 1);
+    now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(1000003ul, now);
+    ztimer_mock_advance(&zmock, 9999);
+    now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(1031765ul, now);
+    ztimer_convert_change_rate(&zc, 7, 1000000ul);
+    ztimer_mock_advance(&zmock, 100);
+    now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(1031765ul, now);
+    ztimer_mock_advance(&zmock, 1000000ul);
+    now = ztimer_now(z);
+    TEST_ASSERT_EQUAL_INT(1031772ul, now);
+}
+
 Test *tests_ztimer_convert_tests(void)
 {
     EMB_UNIT_TESTFIXTURES(fixtures) {
         new_TestFixture(test_ztimer_convert_now),
+        new_TestFixture(test_ztimer_convert_change_rate),
     };
 
     EMB_UNIT_TESTCALLER(ztimer_tests, NULL, NULL, fixtures);
