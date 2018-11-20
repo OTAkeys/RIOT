@@ -24,6 +24,7 @@
 #include "periph_conf.h"
 #include "mutex.h"
 #include "assert.h"
+#include "pm_layered.h"
 
 #if !(defined(CPU_FAM_STM32F2) || defined(CPU_FAM_STM32F4) || defined(CPU_FAM_STM32F7) \
     || defined(CPU_FAM_STM32F0) || defined(CPU_FAM_STM32F1) || defined(CPU_FAM_STM32L0) \
@@ -33,46 +34,46 @@
 
 #if (defined(CPU_FAM_STM32F2) || defined(CPU_FAM_STM32F4) || defined(CPU_FAM_STM32F7))
 #define STM32_DMA_Stream_Type   DMA_Stream_TypeDef
-#define CLOCK       AHB1
-#define PERIPH_ADDR PAR
-#define MEM_ADDR    M0AR
-#define NDTR_REG    NDTR
-#define CONTROL_REG CR
-#define RCC_MASK_DMA1   RCC_AHB1ENR_DMA1EN
-#define RCC_MASK_DMA2   RCC_AHB1ENR_DMA2EN
-#define DMA_STREAM_IT_MASK   (DMA_LISR_FEIF0 | DMA_LISR_DMEIF0 | \
-                              DMA_LISR_TEIF0 | DMA_LISR_HTIF0 | \
-                              DMA_LISR_TCIF0)
-#define DMA_EN      DMA_SxCR_EN
+#define CLOCK                   AHB1
+#define PERIPH_ADDR             PAR
+#define MEM_ADDR                M0AR
+#define NDTR_REG                NDTR
+#define CONTROL_REG             CR
+#define RCC_MASK_DMA1           RCC_AHB1ENR_DMA1EN
+#define RCC_MASK_DMA2           RCC_AHB1ENR_DMA2EN
+#define DMA_STREAM_IT_MASK      (DMA_LISR_FEIF0 | DMA_LISR_DMEIF0 | \
+                                 DMA_LISR_TEIF0 | DMA_LISR_HTIF0 | \
+                                 DMA_LISR_TCIF0)
+#define DMA_EN                  DMA_SxCR_EN
 #else
 #define STM32_DMA_Stream_Type   DMA_Channel_TypeDef
-#define CLOCK       AHB
-#define PERIPH_ADDR CPAR
-#define MEM_ADDR    CMAR
-#define NDTR_REG    CNDTR
-#define CONTROL_REG CCR
-#define RCC_MASK_DMA1   RCC_AHBENR_DMAEN
-#define RCC_MASK_DMA2   RCC_AHBENR_DMA2EN
-#define DMA_STREAM_IT_MASK   (DMA_IFCR_CGIF1 | DMA_IFCR_CTCIF1 | \
-                              DMA_IFCR_CHTIF1 | DMA_IFCR_CTEIF1)
-#define DMA_EN      DMA_CCR_EN
+#define CLOCK                   AHB
+#define PERIPH_ADDR             CPAR
+#define MEM_ADDR                CMAR
+#define NDTR_REG                CNDTR
+#define CONTROL_REG             CCR
+#define RCC_MASK_DMA1           RCC_AHBENR_DMAEN
+#define RCC_MASK_DMA2           RCC_AHBENR_DMA2EN
+#define DMA_STREAM_IT_MASK      (DMA_IFCR_CGIF1 | DMA_IFCR_CTCIF1 | \
+                                 DMA_IFCR_CHTIF1 | DMA_IFCR_CTEIF1)
+#define DMA_EN                  DMA_CCR_EN
 #ifndef DMA_CCR_MSIZE_Pos
-#define DMA_CCR_MSIZE_Pos   (10)
+#define DMA_CCR_MSIZE_Pos       (10)
 #endif
 #ifndef DMA_CCR_PSIZE_Pos
-#define DMA_CCR_PSIZE_Pos   (8)
+#define DMA_CCR_PSIZE_Pos       (8)
 #endif
 #ifndef DMA_CCR_MINC_Pos
-#define DMA_CCR_MINC_Pos    (7)
+#define DMA_CCR_MINC_Pos        (7)
 #endif
 #ifndef DMA_CCR_PINC_Pos
-#define DMA_CCR_PINC_Pos    (6)
+#define DMA_CCR_PINC_Pos        (6)
 #endif
 #ifndef DMA_CCR_DIR_Pos
-#define DMA_CCR_DIR_Pos     (4)
+#define DMA_CCR_DIR_Pos         (4)
 #endif
 #ifndef DMA_CCR_MEM2MEM_Pos
-#define DMA_CCR_MEM2MEM_Pos (14)
+#define DMA_CCR_MEM2MEM_Pos     (14)
 #endif
 #if defined(CPU_FAM_STM32F0) && !defined(DMA1_Channel4_5_6_7_IRQn)
 #define DMA1_Channel4_5_6_7_IRQn    DMA1_Channel4_5_IRQn
@@ -317,12 +318,20 @@ void dma_acquire(dma_t dma)
     assert(dma < DMA_NUMOF);
 
     mutex_lock(&dma_ctx[dma].conf_lock);
+#ifdef STM32_PM_STOP
+    /* block STOP mode */
+    pm_block(STM32_PM_STOP);
+#endif
 }
 
 void dma_release(dma_t dma)
 {
     assert(dma < DMA_NUMOF);
 
+#ifdef STM32_PM_STOP
+    /* unblock STOP mode */
+    pm_unblock(STM32_PM_STOP);
+#endif
     mutex_unlock(&dma_ctx[dma].conf_lock);
 }
 
@@ -371,13 +380,13 @@ int dma_configure(dma_t dma, int chan, const void *src, void *dst, size_t len,
     /* Configure FIFO */
     stream->FCR = 0;
 #else
+#if defined(DMA_CSELR_C1S) || defined(DMA1_CSELR_DEFAULT)
+    dma_req(stream_n)->CSELR = (chan & 0xF) << ((stream_n & 0x7) << 2);
+#endif
     stream->CCR = width << DMA_CCR_MSIZE_Pos | width << DMA_CCR_PSIZE_Pos |
                   inc_periph << DMA_CCR_PINC_Pos | inc_mem << DMA_CCR_MINC_Pos |
                   (mode & 1) << DMA_CCR_DIR_Pos | ((mode & 2) >> 1) << DMA_CCR_MEM2MEM_Pos;
     stream->CCR |= DMA_CCR_TCIE | DMA_CCR_TEIE;
-#if defined(DMA_CSELR_C1S) || defined(DMA1_CSELR_DEFAULT)
-    dma_req(stream_n)->CSELR = (chan & 0xF) << ((stream_n & 0x7) << 2);
-#endif
 #endif
     /* Set length */
     stream->NDTR_REG = len;

@@ -629,7 +629,7 @@ void dma_wait(dma_t dma);
  * @brief   Configure a DMA stream for a new transfer
  *
  * @param[in]  dma     logical DMA stream
- * @param[in]  chan    DMA channel
+ * @param[in]  chan    DMA channel (on stm32f2/4/7, CxS or unused on others)
  * @param[in]  src     source buffer
  * @param[out] dst     destination buffer
  * @param[in]  len     length to transfer
