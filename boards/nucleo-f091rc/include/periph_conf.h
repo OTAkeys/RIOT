@@ -183,9 +183,9 @@ static const spi_conf_t spi_config[] = {
         .rccmask  = RCC_APB2ENR_SPI1EN,
         .apbbus   = APB2,
 #ifdef MODULE_PERIPH_DMA
-        .tx_dma   = 0,
+        .tx_dma   = 1,
         .tx_dma_chan = 0,
-        .rx_dma   = 1,
+        .rx_dma   = 0,
         .rx_dma_chan = 0,
 #endif
     }
