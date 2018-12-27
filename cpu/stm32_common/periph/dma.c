@@ -299,7 +299,7 @@ static void dma_poweron(int stream)
 }
 
 
-int dma_transfer(dma_t dma, int chan, const void *src, void *dst, size_t len,
+int dma_transfer(dma_t dma, int chan, const volatile void *src, volatile void *dst, size_t len,
                  dma_mode_t mode, uint8_t flags)
 {
     int ret = dma_configure(dma, chan, src, dst, len, mode, flags);
@@ -335,7 +335,7 @@ void dma_release(dma_t dma)
     mutex_unlock(&dma_ctx[dma].conf_lock);
 }
 
-int dma_configure(dma_t dma, int chan, const void *src, void *dst, size_t len,
+int dma_configure(dma_t dma, int chan, const volatile void *src, volatile void *dst, size_t len,
                   dma_mode_t mode, uint8_t flags)
 {
     assert(src != NULL);
@@ -381,7 +381,8 @@ int dma_configure(dma_t dma, int chan, const void *src, void *dst, size_t len,
     stream->FCR = 0;
 #else
 #if defined(DMA_CSELR_C1S) || defined(DMA1_CSELR_DEFAULT)
-    dma_req(stream_n)->CSELR = (chan & 0xF) << ((stream_n & 0x7) << 2);
+    dma_req(stream_n)->CSELR &= ~((0xF) << ((stream_n & 0x7) << 2));
+    dma_req(stream_n)->CSELR |= (chan & 0xF) << ((stream_n & 0x7) << 2);
 #endif
     stream->CCR = width << DMA_CCR_MSIZE_Pos | width << DMA_CCR_PSIZE_Pos |
                   inc_periph << DMA_CCR_PINC_Pos | inc_mem << DMA_CCR_MINC_Pos |

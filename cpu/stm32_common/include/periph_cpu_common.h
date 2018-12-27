@@ -567,7 +567,7 @@ void dma_init(void);
  *
  * @return < 0 on error, the number of transfered bytes otherwise
  */
-int dma_transfer(dma_t dma, int chan, const void *src, void *dst, size_t len,
+int dma_transfer(dma_t dma, int chan, const volatile void *src, volatile void *dst, size_t len,
                  dma_mode_t mode, uint8_t flags);
 
 /**
@@ -638,7 +638,7 @@ void dma_wait(dma_t dma);
  *
  * @return < 0 on error, 0 on success
  */
-int dma_configure(dma_t dma, int chan, const void *src, void *dst, size_t len,
+int dma_configure(dma_t dma, int chan, const volatile void *src, volatile void *dst, size_t len,
                   dma_mode_t mode, uint8_t flags);
 
 #endif /* MODULE_PERIPH_DMA */
