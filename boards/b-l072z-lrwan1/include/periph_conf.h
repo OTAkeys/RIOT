@@ -69,6 +69,7 @@ static const dma_conf_t dma_config[] = {
 
 #define DMA_NUMOF           (sizeof(dma_config) / sizeof(dma_config[0]))
 #endif
+/** @} */
 
 /**
  * @name    Timer configuration
@@ -171,7 +172,7 @@ static const spi_conf_t spi_config[] = {
 #ifdef MODULE_PERIPH_DMA
         .tx_dma   = 3,
         .tx_dma_chan = 2,
-        .rx_dma   = 4,
+        .rx_dma   = 2,
         .rx_dma_chan = 2,
 #endif
     },
