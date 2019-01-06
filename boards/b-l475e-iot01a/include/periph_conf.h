@@ -70,6 +70,33 @@ extern "C" {
 /** @} */
 
 /**
+ * @name    DMA streams configuration
+ * @{
+ */
+#ifdef MODULE_PERIPH_DMA
+static const dma_conf_t dma_config[] = {
+    { .stream = 1 },
+    { .stream = 2 },
+    { .stream = 3 },
+    { .stream = 4 },
+    { .stream = 5 },
+    { .stream = 6 },
+    { .stream = 7 },
+};
+
+#define DMA_0_ISR  isr_dma1_channel1
+#define DMA_1_ISR  isr_dma1_channel2
+#define DMA_2_ISR  isr_dma1_channel3
+#define DMA_3_ISR  isr_dma1_channel4
+#define DMA_4_ISR  isr_dma1_channel5
+#define DMA_5_ISR  isr_dma1_channel6
+#define DMA_6_ISR  isr_dma1_channel7
+
+#define DMA_NUMOF           (sizeof(dma_config) / sizeof(dma_config[0]))
+#endif
+/** @} */
+
+/**
  * @name    Timer configuration
  * @{
  */
@@ -104,9 +131,9 @@ static const uart_conf_t uart_config[] = {
         .irqn       = USART1_IRQn,
         .type       = STM32_USART,
         .clk_src    = 0, /* Use APB clock */
-#ifdef UART_USE_DMA
-        .dma_stream = 6,
-        .dma_chan   = 4
+#ifdef MODULE_PERIPH_DMA
+        .dma        = 1,
+        .dma_chan   = 1
 #endif
     },
     {
@@ -120,9 +147,9 @@ static const uart_conf_t uart_config[] = {
         .irqn       = UART4_IRQn,
         .type       = STM32_USART,
         .clk_src    = 0, /* Use APB clock */
-#ifdef UART_USE_DMA
-        .dma_stream = 5,
-        .dma_chan   = 4
+#ifdef MODULE_PERIPH_DMA
+        .dma        = 1,
+        .dma_chan   = 2
 #endif
     }
 };
@@ -186,7 +213,13 @@ static const spi_conf_t spi_config[] = {
         .cs_pin   = GPIO_UNDEF,
         .af       = GPIO_AF5,
         .rccmask  = RCC_APB2ENR_SPI1EN,
-        .apbbus   = APB2
+        .apbbus   = APB2,
+#ifdef MODULE_PERIPH_DMA
+        .tx_dma   = 2,
+        .tx_dma_chan = 3,
+        .rx_dma   = 3,
+        .rx_dma_chan = 4,
+#endif
     }
 };
 
