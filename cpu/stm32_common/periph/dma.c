@@ -47,13 +47,19 @@
 #define DMA_EN                  DMA_SxCR_EN
 #else
 #define STM32_DMA_Stream_Type   DMA_Channel_TypeDef
+#if CPU_FAM_STM32L4
+#define CLOCK                   AHB1
+#define RCC_MASK_DMA1           RCC_AHB1ENR_DMA1EN
+#define RCC_MASK_DMA2           RCC_AHB1ENR_DMA2EN
+#else /* CPU_FAM_STM32L4 */
 #define CLOCK                   AHB
+#define RCC_MASK_DMA1           RCC_AHBENR_DMAEN
+#define RCC_MASK_DMA2           RCC_AHBENR_DMA2EN
+#endif /* CPU_FAM_STM32L4 */
 #define PERIPH_ADDR             CPAR
 #define MEM_ADDR                CMAR
 #define NDTR_REG                CNDTR
 #define CONTROL_REG             CCR
-#define RCC_MASK_DMA1           RCC_AHBENR_DMAEN
-#define RCC_MASK_DMA2           RCC_AHBENR_DMA2EN
 #define DMA_STREAM_IT_MASK      (DMA_IFCR_CGIF1 | DMA_IFCR_CTCIF1 | \
                                  DMA_IFCR_CHTIF1 | DMA_IFCR_CTEIF1)
 #define DMA_EN                  DMA_CCR_EN
