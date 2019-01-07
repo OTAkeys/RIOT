@@ -51,7 +51,11 @@
 #define RCC_MASK_DMA2           RCC_AHB1ENR_DMA2EN
 #else /* CPU_FAM_STM32L4 */
 #define CLOCK                   AHB
+#if CPU_FAM_STM32F1
+#define RCC_MASK_DMA1           RCC_AHBENR_DMA1EN
+#else
 #define RCC_MASK_DMA1           RCC_AHBENR_DMAEN
+#endif
 #define RCC_MASK_DMA2           RCC_AHBENR_DMA2EN
 #endif /* CPU_FAM_STM32L4 */
 #define PERIPH_ADDR             CPAR
@@ -203,8 +207,8 @@ static IRQn_Type dma_get_irqn(int stream)
         return (DMA2_Channel4_5_IRQn);
 #else
         return ((IRQn_Type)((int)DMA2_Channel6_IRQn + stream));
-    }
 #endif
+    }
 #endif
 
     return -1;
@@ -387,6 +391,8 @@ int dma_configure(dma_t dma, int chan, const volatile void *src, volatile void *
 #if defined(DMA_CSELR_C1S) || defined(DMA1_CSELR_DEFAULT)
     dma_req(stream_n)->CSELR &= ~((0xF) << ((stream_n & 0x7) << 2));
     dma_req(stream_n)->CSELR |= (chan & 0xF) << ((stream_n & 0x7) << 2);
+#else
+    (void)chan;
 #endif
     stream->CCR = width << DMA_CCR_MSIZE_Pos | width << DMA_CCR_PSIZE_Pos |
                   inc_periph << DMA_CCR_PINC_Pos | inc_mem << DMA_CCR_MINC_Pos |
