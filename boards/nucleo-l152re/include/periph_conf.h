@@ -68,7 +68,7 @@ extern "C" {
  */
 #ifdef MODULE_PERIPH_DMA
 static const dma_conf_t dma_config[] = {
-    { .stream = 1 },    /* DMA1 Channel 2 - SPI1_RX */
+    { .stream = 1 },    /* DMA1 Channel 2 - SPI1_RX / USART3_TX */
     { .stream = 2 },    /* DMA1 Channel 3 - SPI1_TX */
     { .stream = 6 },    /* DMA1 Channel 7 - USART2_TX */
     { .stream = 4 },    /* DMA1 Channel 4 - USART1_TX */
@@ -152,9 +152,8 @@ static const uart_conf_t uart_config[] = {
         .bus      = APB1,
         .irqn     = USART3_IRQn,
 #ifdef MODULE_PERIPH_DMA
-        /* disable DMA on third UART because of conflict with SPI1 */
-        .dma        = DMA_STREAM_UNDEF,
-        .dma_chan   = 0
+        .dma        = 0,
+        .dma_chan   = 2
 #endif
     },
 };
