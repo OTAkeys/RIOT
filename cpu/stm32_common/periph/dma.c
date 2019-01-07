@@ -43,7 +43,7 @@
                                  DMA_LISR_TEIF0 | DMA_LISR_HTIF0 | \
                                  DMA_LISR_TCIF0)
 #define DMA_EN                  DMA_SxCR_EN
-#else
+#else /* CPU_FAM_STM32F2 || CPU_FAM_STM32F4 || CPU_FAM_STM32F7 */
 #define STM32_DMA_Stream_Type   DMA_Channel_TypeDef
 #if CPU_FAM_STM32L4
 #define CLOCK                   AHB1
@@ -51,20 +51,26 @@
 #define RCC_MASK_DMA2           RCC_AHB1ENR_DMA2EN
 #else /* CPU_FAM_STM32L4 */
 #define CLOCK                   AHB
-#if CPU_FAM_STM32F1
+#if CPU_FAM_STM32F1 || CPU_FAM_STM32L1
 #define RCC_MASK_DMA1           RCC_AHBENR_DMA1EN
-#else
+#else /* CPU_FAM_STM32F1 || CPU_FAM_STM32L1 */
 #define RCC_MASK_DMA1           RCC_AHBENR_DMAEN
-#endif
+#endif /* CPU_FAM_STM32F1 || CPU_FAM_STM32L1 */
 #define RCC_MASK_DMA2           RCC_AHBENR_DMA2EN
 #endif /* CPU_FAM_STM32L4 */
 #define PERIPH_ADDR             CPAR
 #define MEM_ADDR                CMAR
 #define NDTR_REG                CNDTR
 #define CONTROL_REG             CCR
+#if CPU_FAM_STM32L1
+#define DMA_CCR_TCIE            DMA_CCR1_TCIE
+#define DMA_CCR_TEIE            DMA_CCR1_TEIE
+#define DMA_EN                  DMA_CCR1_EN
+#else /* CPU_FAM_STM32L1 */
+#define DMA_EN                  DMA_CCR_EN
+#endif /* CPU_FAM_STM32L1 */
 #define DMA_STREAM_IT_MASK      (DMA_IFCR_CGIF1 | DMA_IFCR_CTCIF1 | \
                                  DMA_IFCR_CHTIF1 | DMA_IFCR_CTEIF1)
-#define DMA_EN                  DMA_CCR_EN
 #ifndef DMA_CCR_MSIZE_Pos
 #define DMA_CCR_MSIZE_Pos       (10)
 #endif
@@ -86,7 +92,7 @@
 #if defined(CPU_FAM_STM32F0) && !defined(DMA1_Channel4_5_6_7_IRQn)
 #define DMA1_Channel4_5_6_7_IRQn    DMA1_Channel4_5_IRQn
 #endif
-#endif
+#endif /* CPU_FAM_STM32F2 || CPU_FAM_STM32F4 || CPU_FAM_STM32F7 */
 
 struct dma_ctx {
     mutex_t conf_lock;
@@ -202,6 +208,7 @@ static IRQn_Type dma_get_irqn(int stream)
 #endif
         return ((IRQn_Type)((int)DMA2_Channel1_IRQn + stream));
     }
+#if !defined(CPU_FAM_STM32L1)
     else {
 #if defined(CPU_FAM_STM32F1)
         return (DMA2_Channel4_5_IRQn);
@@ -209,6 +216,7 @@ static IRQn_Type dma_get_irqn(int stream)
         return ((IRQn_Type)((int)DMA2_Channel6_IRQn + stream));
 #endif
     }
+#endif
 #endif
 
     return -1;
@@ -394,10 +402,10 @@ int dma_configure(dma_t dma, int chan, const volatile void *src, volatile void *
 #else
     (void)chan;
 #endif
-    stream->CCR = width << DMA_CCR_MSIZE_Pos | width << DMA_CCR_PSIZE_Pos |
-                  inc_periph << DMA_CCR_PINC_Pos | inc_mem << DMA_CCR_MINC_Pos |
-                  (mode & 1) << DMA_CCR_DIR_Pos | ((mode & 2) >> 1) << DMA_CCR_MEM2MEM_Pos;
-    stream->CCR |= DMA_CCR_TCIE | DMA_CCR_TEIE;
+    stream->CONTROL_REG = width << DMA_CCR_MSIZE_Pos | width << DMA_CCR_PSIZE_Pos |
+                        inc_periph << DMA_CCR_PINC_Pos | inc_mem << DMA_CCR_MINC_Pos |
+                        (mode & 1) << DMA_CCR_DIR_Pos | ((mode & 2) >> 1) << DMA_CCR_MEM2MEM_Pos;
+    stream->CONTROL_REG |= DMA_CCR_TCIE | DMA_CCR_TEIE;
 #endif
     /* Set length */
     stream->NDTR_REG = len;
