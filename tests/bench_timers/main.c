@@ -558,7 +558,7 @@ static int test_timer(void)
     print_str("\n");
 #endif
     print_results(&presentation, &ref_states[0], &int_states[0]);
-
+    while(1);
     return 0;
 }
 

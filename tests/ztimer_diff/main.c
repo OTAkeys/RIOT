@@ -49,7 +49,7 @@ int main(void)
         }
     }
 
-    printf("min=%u max=%u avg=%u\n", min, max, (total / SAMPLES));
+    printf("min=%d max=%d avg=%ld\n", min, max, (total / SAMPLES));
 
     return 0;
 }

@@ -28,7 +28,7 @@
 
 /* make sure we have all needed information about the clock configuration */
 #ifndef CLOCK_HSE
-#error "Please provide CLOCK_HSE in your board's perhip_conf.h"
+#error "Please provide CLOCK_HSE in your board's periph_conf.h"
 #endif
 #ifndef CLOCK_LSE
 #error "Please provide CLOCK_LSE in your board's periph_conf.h"

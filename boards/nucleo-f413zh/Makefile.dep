@@ -1,1 +1,3 @@
+#FEATURES_REQUIRED += periph_rtt
+
 include $(RIOTBOARD)/common/nucleo/Makefile.dep

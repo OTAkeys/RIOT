@@ -211,6 +211,22 @@ do_flash() {
         echo "Flashing with IMAGE_OFFSET: ${IMAGE_OFFSET}"
     fi
 
+    echo "${OPENOCD} \
+            ${OPENOCD_ADAPTER_INIT} \
+            -f '${OPENOCD_CONFIG}' \
+            ${OPENOCD_EXTRA_INIT} \
+            -c 'tcl_port 0' \
+            -c 'telnet_port 0' \
+            -c 'gdb_port 0' \
+            -c 'init' \
+            -c 'targets' \
+            -c 'reset halt' \
+            ${OPENOCD_PRE_FLASH_CMDS} \
+            -c 'flash write_image erase \"${IMAGE_FILE}\" ${IMAGE_OFFSET} ${IMAGE_TYPE}' \
+            ${OPENOCD_PRE_VERIFY_CMDS} \
+            -c 'verify_image \"${IMAGE_FILE}\" ${IMAGE_OFFSET}' \
+            -c 'reset run' \
+            -c 'shutdown'"
     # flash device
     sh -c "${OPENOCD} \
             ${OPENOCD_ADAPTER_INIT} \
@@ -247,6 +263,18 @@ do_debug() {
     trap "cleanup ${OCD_PIDFILE}" EXIT
     # don't trap on Ctrl+C, because GDB keeps running
     trap '' INT
+    echo "${SETSID} sh -c ${OPENOCD} \
+            ${OPENOCD_ADAPTER_INIT} \
+            -f '${OPENOCD_CONFIG}' \
+            ${OPENOCD_EXTRA_INIT} \
+            -c 'tcl_port ${TCL_PORT}' \
+            -c 'telnet_port ${TELNET_PORT}' \
+            -c 'gdb_port ${GDB_PORT}' \
+            -c 'init' \
+            -c 'targets' \
+            ${OPENOCD_DBG_START_CMD} \
+            -l /dev/null & \
+            echo \$! > $OCD_PIDFILE"
     # start OpenOCD as GDB server
     ${SETSID} sh -c "${OPENOCD} \
             ${OPENOCD_ADAPTER_INIT} \

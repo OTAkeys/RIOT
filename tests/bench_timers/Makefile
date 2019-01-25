@@ -18,7 +18,7 @@ SMALL_RAM_BOARDS = \
 FEATURES_REQUIRED = periph_timer
 
 # Use RTT as a wall clock reference, if available
-FEATURES_OPTIONAL = periph_rtt
+#FEATURES_OPTIONAL = periph_rtt
 
 USEMODULE += random
 USEMODULE += fmt
