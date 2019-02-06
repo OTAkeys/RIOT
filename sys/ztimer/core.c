@@ -14,7 +14,7 @@
 #define ENABLE_DEBUG (0)
 #include "debug.h"
 
-#define SECURITY_VALUE  20
+#define SECURITY_VALUE  0
 
 static void _add_entry_to_list(ztimer_dev_t *ztimer, ztimer_base_t *entry);
 static void _del_entry_from_list(ztimer_dev_t *ztimer, ztimer_base_t *entry);
@@ -40,38 +40,19 @@ void ztimer_set(ztimer_dev_t *ztimer, ztimer_t *entry, uint32_t val)
 {
     DEBUG("enter:ztimer_set()\n");
     uint32_t now = ztimer->ops->now(ztimer);
-    DEBUG("ztimer_set(): now:0x%08"PRIx32" list.offset 0x%08"PRIx32
-            "target 0x%08"PRIx32"\n", now, ztimer->list.offset, val);
+    DEBUG("ztimer_set(): now:%"PRIu32" list.offset %"PRIu32
+            " target %"PRIu32"\n", now, ztimer->list.offset, val);
 
     unsigned state = irq_disable();
-    _update_head_offset(ztimer, now - ztimer->list.offset);
     _del_entry_from_list(ztimer, &entry->base);
+    _update_head_offset(ztimer, now - ztimer->list.offset);
+
     //update target alarm to current N counts value
     entry->base.offset =  val;
-    DEBUG("possibleoffset to trigger %"PRIx32"\n", entry->base.offset);
-
+    DEBUG("insert to queue offset %"PRIu32"\n", entry->base.offset);
     _add_entry_to_list(ztimer, &entry->base);
-    if (ztimer->list.next == &entry->base) {
-        //if next target should fire before next overflow check it!
-        if((entry->base.offset + now + SECURITY_VALUE) < (uint32_t)0xFFFF){
-            DEBUG("offset+now smaller than FFFF\n");
-            DEBUG("no ovf alarm:target=0x%08"PRIx32"--cnt=0x%08"PRIx32"\n",
-                    entry->base.offset, now);
-            /* The added entry became the new list head */
-            ztimer->ops->set(ztimer, entry->base.offset);
-            //cancel ovf alarm cause it won't happen before next overflow
-            ztimer->ops->cancel_ovf(ztimer);
-        } else{
-            DEBUG("offset+now bigger than FFFF\n");
-            DEBUG("set ovf callback\n");
-            //set overflow callback
-            ztimer->ops->set_ovf_alarm(ztimer);
-            //cancel possible next alarm
-            ztimer->ops->cancel(ztimer);
-        }
-        //only if we just trigger the first alarm, we update the reference counts
-        ztimer->list.offset = now;
-    }
+
+    _ztimer_relaunch_if_needed(ztimer);
     irq_restore(state);
     DEBUG("exit:ztimer_set()\n");
 }
@@ -92,7 +73,7 @@ static void _add_entry_to_list(ztimer_dev_t *ztimer, ztimer_base_t *entry)
         list = list->next;
     }
 
-    DEBUG("delta_sum=0x%08lx\n", delta_sum);
+
     /* Insert into list */
     entry->next = list->next;
     entry->offset -= delta_sum;
@@ -100,7 +81,7 @@ static void _add_entry_to_list(ztimer_dev_t *ztimer, ztimer_base_t *entry)
         entry->next->offset -= entry->offset;
     }
     list->next = entry;
-    DEBUG("_add_entry_to_list() %p offset %"PRIx32"\n", (void *)entry, entry->offset);
+    DEBUG("_add_entry_to_list() %p offset %"PRIu32"\n", (void *)entry, entry->offset);
     if (ENABLE_DEBUG) {
         _ztimer_print(ztimer);
     }
@@ -113,16 +94,19 @@ static void _update_head_offset(ztimer_dev_t *ztimer, uint16_t elapsed_counts)
 {
     DEBUG("enter:update_head_offset()\n");
     ztimer_base_t *entry = ztimer->list.next;
-    DEBUG("ztimer:update_head_offset() ELAPSED COUNTS=0x%08"PRIx32"\n", (uint32_t)elapsed_counts);
+    DEBUG("ztimer:update_head_offset() ELAPSED COUNTS=%"PRIu32"\n", (uint32_t)elapsed_counts);
     if (entry) {
-    DEBUG("sthing to update: elapsed time %04x with "
-                "entry offset %" PRIx32" \n", elapsed_counts, entry->offset);
+    DEBUG("something to update: elapsed time %d with "
+                "entry offset %"PRIu32" \n", elapsed_counts, entry->offset);
         do {
             if (elapsed_counts <= entry->offset) {
                 entry->offset -= elapsed_counts;
                 break;
             } else{
                 elapsed_counts -= entry->offset;
+                DEBUG("WARNING!!! elapsed time %d with "
+                            "entry offset %"PRIu32" \n", elapsed_counts, entry->offset);
+
                 if (elapsed_counts > 0) {
                     /* skip timers with offset < diff */
                     entry->offset = 0;
@@ -131,11 +115,16 @@ static void _update_head_offset(ztimer_dev_t *ztimer, uint16_t elapsed_counts)
             }
         } while ((elapsed_counts > 0) && entry);
     }
-//    ztimer->list.offset += elapsed_counts;
+
     if (entry) {
-        DEBUG("ztimer_offset=%"PRIx32" new head %p with entry offset %"PRIx32"\n",
+        DEBUG("ztimer_offset=%"PRIu32" new head %p with entry offset %"PRIu32"\n",
             ztimer->list.offset, (void *)entry, entry->offset);
     }
+    if (ENABLE_DEBUG) {
+        _ztimer_print(ztimer);
+    }
+    //    //only if we trigger one alarm, we update the reference counts
+    //    ztimer->list.offset = ztimer->ops->now(ztimer);
     DEBUG("exit:update_head_offset()\n");
 }
 
@@ -159,13 +148,6 @@ static void _del_entry_from_list(ztimer_dev_t *ztimer, ztimer_base_t *entry)
     if (ENABLE_DEBUG) {
         _ztimer_print(ztimer);
     }
-    //if there's no more alarms to fire... stop everything!
-    if(!list->next){
-        DEBUG("NO MORE ENTRIES, STOPPING CB'S\n");
-        ztimer->ops->cancel(ztimer);
-        ztimer->ops->cancel_ovf(ztimer);
-        ztimer->list.offset = 0;
-    }
     DEBUG("exit:_del_entry_from_list()\n");
 }
 
@@ -188,14 +170,14 @@ static void _ztimer_relaunch_if_needed(ztimer_dev_t *ztimer)
 {
     DEBUG("enter:_ztimer_relaunch_if_needed()\n");
     uint16_t now = ztimer->ops->now(ztimer);
-    DEBUG("RELAUNCH IF NEEDED: now 0x%04x\n", now);
-    DEBUG("global off=0x%08lx\n",ztimer->list.offset);
+    DEBUG("RELAUNCH IF NEEDED: now %d\n", now);
+    DEBUG("reference counts=%ld\n",ztimer->list.offset);
     if (ztimer->list.next) {
         //if next target should fire before next overflow set it!
-        if((ztimer->list.next->offset + now) < 0xFFFF){
+        if((ztimer->list.next->offset + now + SECURITY_VALUE) < 0xFFFF){
             DEBUG("offset+now smaller than FFFF\n");
             /* The added entry became the new list head */
-            ztimer->ops->set(ztimer, ztimer->list.next->offset);
+            ztimer->ops->set(ztimer, ztimer->list.next->offset + ztimer->ops->now(ztimer));
             //cancel ovf alarm cause it won't happen before next alarm
             ztimer->ops->cancel_ovf(ztimer);
 
@@ -206,57 +188,65 @@ static void _ztimer_relaunch_if_needed(ztimer_dev_t *ztimer)
             //cancel possible next alarm
             ztimer->ops->cancel(ztimer);
         }
-        //only if we trigger one alarm, we update the reference counts
-        ztimer->list.offset = now;
     }
     else {
-        DEBUG("relaunch_NOT_needed-global off=0x%08lx \n",ztimer->list.offset);
+        DEBUG("relaunch_NOT_needed-reference counts=%ld \n",ztimer->list.offset);
         ztimer->ops->cancel(ztimer);
         ztimer->ops->cancel_ovf(ztimer);
-        ztimer->list.offset = 0;
+//        ztimer->list.offset = 0;
     }
+//    //only if we trigger one alarm, we update the reference counts
+    ztimer->list.offset = ztimer->ops->now(ztimer);
+    DEBUG("update reference counts=%ld\n",ztimer->list.offset);
     DEBUG("exit:_ztimer_relaunch_if_needed()\n");
 }
 
 void _ztimer_overflow_callback(ztimer_dev_t *ztimer){
     (void) ztimer;
-    DEBUG("_ztimer_overflow_callback()-global ref counts=0x%08lx \n",ztimer->list.offset);
+    DEBUG("_ztimer_overflow_callback()-reference counts=%ld \n",ztimer->list.offset);
     uint16_t elapsed_counts = 0xFFFF - ztimer->list.offset;
-    DEBUG("Updating with=0x%08x \n", elapsed_counts);
+    DEBUG("Updating with=%d\n", elapsed_counts);
 
+    unsigned state = irq_disable();
 //  update list alarm values with elapsed time
     _update_head_offset(ztimer, elapsed_counts);
-
     _ztimer_relaunch_if_needed(ztimer);
+    irq_restore(state);
 }
 
 void ztimer_handler(ztimer_dev_t *ztimer)
 {
     DEBUG("enter:ztimer_handler()\n");
-    DEBUG("ztimer_handler(): glob_off before update=0x%08"PRIx32" now=0x%08"PRIx32"\n",
+    DEBUG("ztimer_handler(): glob_off before update=%"PRIu32" now=%"PRIu32"\n",
             ztimer->list.offset, ztimer->ops->now(ztimer));
     if (ENABLE_DEBUG) {
         _ztimer_print(ztimer);
     }
-    //first timer triggered the cb, add elapsed time to global offset
-//    uint32_t elapsed_count = ztimer->list.next->offset;
-//    ztimer->list.offset += elapsed_count;
-    //en teoria esto de abajo no habria que ponerlo xq
-    //las alarmas se disparan solo si son menor a FFFF
-//    ztimer->list.offset &= 0xFFFF;
+//    uint16_t now_before_cb = 0, now = 0;
+
+    //disable callbacks
+    ztimer->ops->cancel(ztimer);
+    ztimer->ops->cancel_ovf(ztimer);
     //update the alarm that just triggered
     ztimer->list.next->offset = 0;
     ztimer_t *entry = _now_next(ztimer);
     while (entry) {
-        DEBUG("ztimer_handler(): trigger %p->%p at %"PRIx32"\n",
+//        now_before_cb = ztimer->ops->now(ztimer);
+        DEBUG("ztimer_handler(): trigger %p->%p at %"PRIu32"\n",
                 (void *)entry, (void *)entry->base.next, ztimer->ops->now(ztimer));
-        entry->callback(entry->arg);
         _del_entry_from_list(ztimer, &entry->base);
+        entry->callback(entry->arg);
         entry = _now_next(ztimer);
 //        if (!entry) {
+//            //check that no overflow came in between
+//            now = ztimer->ops->now(ztimer);
+//            DEBUG("now before cb %"PRIu16"--now after cb %"PRIu16" \n",
+//                    now_before_cb, now);
 //            /* See if any more alarms expired during callback processing */
 //            /* This reduces the number of implicit calls to ztimer->ops->now() */
-//            _update_head_offset(ztimer, elapsed_count);
+//            _update_head_offset(ztimer, now_before_cb < now ? now - now_before_cb :
+//                    (0xFFFF - now_before_cb + now));
+//            now_before_cb = now;
 //            entry = _now_next(ztimer);
 //        }
     }
@@ -277,7 +267,7 @@ static void _ztimer_print(ztimer_dev_t *ztimer)
 {
     ztimer_base_t *entry = &ztimer->list;
     do {
-        printf("0x%08x:%"PRIx32"->", (unsigned)entry, entry->offset);
+        printf("0x%"PRIx16":%lu->", (unsigned)entry, entry->offset);
     } while ((entry = entry->next));
     puts("");
 }

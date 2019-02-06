@@ -160,7 +160,7 @@ void isr_lptim1(void)
 {
     if (LPTIM1->ISR & LPTIM_ISR_CMPM) {
         if (to_cb) {
-            DEBUG("MATCH CMP=0x%04lx, CNT=0x%04lx\n",
+            DEBUG("MATCH CMP=%ld, CNT=%ld\n",
             (uint32_t)LPTIM1->CMP, (uint32_t)LPTIM1->CNT);
             /* 'consume' the callback (as it might be set again in the cb) */
             rtt_cb_t tmp = to_cb;
@@ -170,7 +170,7 @@ void isr_lptim1(void)
     }
     if (LPTIM1->ISR & LPTIM_ISR_ARRM) {
         if (ovf_cb) {
-            DEBUG("OVF CMP=%lx, CNT=%lx\n", (uint32_t)LPTIM1->CMP, (uint32_t)LPTIM1->CNT);
+            DEBUG("OVF CMP=%ld, CNT=%ld\n", (uint32_t)LPTIM1->CMP, (uint32_t)LPTIM1->CNT);
             ovf_cb(ovf_arg);
         }
     }

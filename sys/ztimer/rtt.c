@@ -29,9 +29,9 @@ static void _ztimer_rtt_set_overflow_alarm(ztimer_dev_t *ztimer)
 
 
 static void _ztimer_rtt_set(ztimer_dev_t *ztimer, uint32_t val)
-{   uint16_t now = ztimer->ops->now(ztimer);
-    DEBUG("_ztimer_rtt_set 16bit: now=0x%04"PRIx16",target=0x%08"PRIx32"\n", now, val);
-    rtt_set_alarm(val + now, _ztimer_rtt_callback, ztimer);
+{
+    DEBUG("_ztimer_rtt_set 16bit:target=%"PRIu32"\n", val);
+    rtt_set_alarm(val, _ztimer_rtt_callback, ztimer);
 }
 
 static uint32_t _ztimer_rtt_now(ztimer_dev_t *ztimer)
