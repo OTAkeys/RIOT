@@ -70,7 +70,7 @@ struct ztimer_base {
 /**
  * @brief   ztimer structure
  *
- * This type represents an instance of an alarm, which is set on an
+ * This type represents an instance of a n alarm, which is set on an
  * underlying clock object
  */
 typedef struct {
@@ -93,6 +93,11 @@ typedef struct {
     void(*set)(ztimer_dev_t *ztimer, uint32_t val);
 
     /**
+     * @brief   Set overflow alarm
+     */
+    void(*set_ovf_alarm)(ztimer_dev_t *ztimer);
+
+    /**
      * @brief   Get the current count of the timer
      */
     uint32_t(*now)(ztimer_dev_t *ztimer);
@@ -101,6 +106,11 @@ typedef struct {
      * @brief   Cancel any set target
      */
     void(*cancel)(ztimer_dev_t *ztimer);
+
+    /**
+     * @brief   Cancel overflow alarm
+     */
+    void(*cancel_ovf)(ztimer_dev_t *ztimer);
 
     /* TODO: What is the purpose of this method? */
     void(*trigger)(ztimer_dev_t *dev, ztimer_base_t *timer);
@@ -112,10 +122,16 @@ typedef struct {
 struct ztimer_dev {
     ztimer_base_t list;         /**< list of active timers */
     const ztimer_ops_t *ops;    /**< pointer to methods structure */
+//    uint16_t ref_ovf_count;
 };
 
 /**
  * @brief   main ztimer callback handler
+ */
+void _ztimer_overflow_callback(ztimer_dev_t *ztimer);
+
+/**
+ * @brief   main ztimer overflow callback handler
  */
 void ztimer_handler(ztimer_dev_t *ztimer);
 

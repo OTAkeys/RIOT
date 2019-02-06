@@ -23,6 +23,8 @@
 #include "irq.h"
 #include "periph/rtt.h"
 #include "stmclk.h"
+#define ENABLE_DEBUG (0)
+#include "debug.h"
 
 /* this driver is only valid for STM CPUs that provide LPTIMERs */
 #if defined(LPTIM1)
@@ -158,6 +160,8 @@ void isr_lptim1(void)
 {
     if (LPTIM1->ISR & LPTIM_ISR_CMPM) {
         if (to_cb) {
+            DEBUG("MATCH CMP=0x%04lx, CNT=0x%04lx\n",
+            (uint32_t)LPTIM1->CMP, (uint32_t)LPTIM1->CNT);
             /* 'consume' the callback (as it might be set again in the cb) */
             rtt_cb_t tmp = to_cb;
             to_cb = NULL;
@@ -166,6 +170,7 @@ void isr_lptim1(void)
     }
     if (LPTIM1->ISR & LPTIM_ISR_ARRM) {
         if (ovf_cb) {
+            DEBUG("OVF CMP=%lx, CNT=%lx\n", (uint32_t)LPTIM1->CMP, (uint32_t)LPTIM1->CNT);
             ovf_cb(ovf_arg);
         }
     }

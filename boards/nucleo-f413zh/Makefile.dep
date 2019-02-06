@@ -1,1 +1,4 @@
+USE_MODULE += ztimer ztimer_rtt ztimer_extend
+FEATURES_REQUIRED += periph_rtt
+
 include $(RIOTBOARD)/common/nucleo/Makefile.dep

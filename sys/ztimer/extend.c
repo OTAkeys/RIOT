@@ -169,7 +169,6 @@ static const ztimer_ops_t ztimer_extend_ops = {
 
 void ztimer_extend_init(ztimer_extend_t *self, ztimer_dev_t *lower, unsigned lower_width)
 {
-    uint32_t now = ztimer_now(lower);
     uint32_t lower_max = (1ul << lower_width) - 1;
     *self = (ztimer_extend_t) {
         .super = { .ops = &ztimer_extend_ops, },
@@ -179,11 +178,12 @@ void ztimer_extend_init(ztimer_extend_t *self, ztimer_dev_t *lower, unsigned low
         .lower_max = lower_max,
         .partition_mask = (lower_max >> 2),
     };
+    uint32_t now = ztimer_now(lower);
     self->origin = now & ~(self->partition_mask);
     DEBUG("zx_init: %p lower=%p lower_max=0x%08" PRIx32 " partition_mask=0x%08" PRIx32 "\n",
         (void *)self, (void *)lower, lower_max, self->partition_mask);
 
     /* Ensure that there is always at least one alarm target inside
      * each partition, in order to always detect timer rollover */
-    ztimer_set(lower, &self->lower_partition_entry, self->partition_mask + 1);
+    ztimer_set(lower, &self->lower_partition_entry, self->lower_max);
 }
