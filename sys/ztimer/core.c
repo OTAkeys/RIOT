@@ -38,6 +38,7 @@ void ztimer_remove(ztimer_dev_t *ztimer, ztimer_t *entry)
 
 void ztimer_set(ztimer_dev_t *ztimer, ztimer_t *entry, uint32_t val)
 {
+    // TODO: as for now we don't manage 'val'in seconds, only in number of counts
     DEBUG("enter:ztimer_set()\n");
     uint32_t now = ztimer->ops->now(ztimer);
     DEBUG("ztimer_set(): now:%"PRIu32" list.offset %"PRIu32
@@ -193,7 +194,6 @@ static void _ztimer_relaunch_if_needed(ztimer_dev_t *ztimer)
         DEBUG("relaunch_NOT_needed-reference counts=%ld \n",ztimer->list.offset);
         ztimer->ops->cancel(ztimer);
         ztimer->ops->cancel_ovf(ztimer);
-//        ztimer->list.offset = 0;
     }
 //    //only if we trigger one alarm, we update the reference counts
     ztimer->list.offset = ztimer->ops->now(ztimer);
@@ -235,8 +235,15 @@ void ztimer_handler(ztimer_dev_t *ztimer)
         DEBUG("ztimer_handler(): trigger %p->%p at %"PRIu32"\n",
                 (void *)entry, (void *)entry->base.next, ztimer->ops->now(ztimer));
         _del_entry_from_list(ztimer, &entry->base);
+        //callback might take a lot of counts
         entry->callback(entry->arg);
         entry = _now_next(ztimer);
+        //TODO As we might have some alarms that should be triggered
+        // after some counts have lapsed, we should verify that their offset is smaller
+        // than some constant we should define as well, and then launch their callback's.
+        // This will avoid to launch an ISR with smaller counts and not deal with all the
+        // overhead.
+        // \|/
 //        if (!entry) {
 //            //check that no overflow came in between
 //            now = ztimer->ops->now(ztimer);
