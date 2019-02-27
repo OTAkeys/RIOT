@@ -30,7 +30,7 @@ static void _ztimer_rtt_set_overflow_alarm(ztimer_dev_t *ztimer)
 
 static void _ztimer_rtt_set(ztimer_dev_t *ztimer, uint32_t val)
 {
-    DEBUG("_ztimer_rtt_set 16bit:target=%"PRIu32"\n", val);
+    DEBUG("ztimer_rtt_set target=%"PRIu32"\n", val);
     rtt_set_alarm(val, _ztimer_rtt_callback, ztimer);
 }
 
@@ -65,8 +65,9 @@ void ztimer_rtt_init(ztimer_rtt_t *ztimer)
 {
     ztimer->ops = &_ztimer_rtt_ops;
     //set overflow alarm
-    ztimer->ops->set_ovf_alarm(ztimer);
+//    ztimer->ops->set_ovf_alarm(ztimer);
     rtt_init();
     rtt_poweron();
+    ztimer->list.offset = ztimer->ops->now(ztimer);
 
 }
