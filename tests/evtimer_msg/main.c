@@ -30,7 +30,7 @@ static evtimer_t evtimer;
 static evtimer_msg_event_t events[] = {
     { .event = { .offset = 1000 }, .msg = { .content = { .ptr = "supposed to be 1000" } } },
     { .event = { .offset = 1500 }, .msg = { .content = { .ptr = "supposed to be 1500" } } },
-    { .event = { .offset = 659 }, .msg = { .content = { .ptr = "supposed to be 659" } } },
+    { .event = { .offset = 20 }, .msg = { .content = { .ptr = "supposed to be 20" } } },
     { .event = { .offset = 3954 }, .msg = { .content = { .ptr = "supposed to be 3954" } } },
 };
 
