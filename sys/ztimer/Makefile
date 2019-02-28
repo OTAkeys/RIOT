@@ -1,4 +1,4 @@
-SRC := core.c diff.c util.c
+SRC := core.c diff.c util.c rtt.c
 
 # enable submodules
 SUBMODULES := 1

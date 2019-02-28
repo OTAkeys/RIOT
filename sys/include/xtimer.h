@@ -556,6 +556,9 @@ void xtimer_set_timeout_flag(xtimer_t *t, uint32_t timeout);
  */
 #define XTIMER_CHAN (0)
 
+#define XTIMER_HZ           (32768ul)
+#define XTIMER_WIDTH        16
+
 #if (TIMER_0_MAX_VALUE) == 0xfffffful
 #define XTIMER_WIDTH (24)
 #elif (TIMER_0_MAX_VALUE) == 0xffff
@@ -565,6 +568,7 @@ void xtimer_set_timeout_flag(xtimer_t *t, uint32_t timeout);
 #endif
 
 #ifndef XTIMER_WIDTH
+123
 /**
  * @brief xtimer timer width
  *

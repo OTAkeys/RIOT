@@ -110,7 +110,7 @@ static void ztimer_extend_update(ztimer_extend_t *self)
 {
     if (!self->super.list.next) {
         /* No alarms queued */
-        DEBUG("zx: no alarm\n");
+//        DEBUG("zx: no alarm\n");
         return;
     }
     uint32_t lower_now = ztimer_now(self->lower);

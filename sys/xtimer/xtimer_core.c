@@ -27,6 +27,8 @@
 #include "board.h"
 #include "periph/timer.h"
 #include "periph_conf.h"
+#else
+#include "periph/rtt.h"
 #endif
 
 #include "xtimer.h"
@@ -60,9 +62,9 @@ static void _timer_callback(void);
 
 #ifndef MODULE_ZTIMER
 static void _periph_timer_callback(void *arg, int chan);
+static ztimer_t _ztimer = { .callback=_ztimer_callback };
 #else
 static void _ztimer_callback(void *arg);
-static ztimer_t _ztimer = { .callback=_ztimer_callback };
 #endif
 
 static inline int _this_high_period(uint32_t target);
@@ -87,7 +89,6 @@ void xtimer_init(void)
     /* initialize low-level timer */
     timer_init(XTIMER_DEV, XTIMER_HZ, _periph_timer_callback, NULL);
 #endif
-
     /* register initial overflow tick */
     _lltimer_set(0xFFFFFFFF);
 }
@@ -195,7 +196,9 @@ static inline void _lltimer_set(uint32_t target)
 #ifndef MODULE_ZTIMER
     timer_set_absolute(XTIMER_DEV, XTIMER_CHAN, _xtimer_lltimer_mask(target));
 #else
-    ztimer_set(ZTIMER_USEC, &_ztimer, target - ztimer_now(ZTIMER_USEC));
+//    ztimer_set(ZTIMER_USEC, &_ztimer, _xtimer_lltimer_mask(target) - ztimer_now(ZTIMER_USEC));
+    rtt_set_alarm(_xtimer_lltimer_mask(target), (rtt_cb_t)_ztimer_callback, 0);
+
 #endif
 }
 

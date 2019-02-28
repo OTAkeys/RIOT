@@ -45,8 +45,10 @@ void cpu_init(void)
 {
     /* initialize the Cortex-M core */
     cortexm_init();
+    DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_LPTIM_STOP;
     /* enable PWR module */
     periph_clk_en(APB1, BIT_APB_PWREN);
+    DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_LPTIM_STOP;
     /* initialize the system clock as configured in the periph_conf.h */
     stmclk_init_sysclk();
 #ifdef MODULE_PERIPH_DMA

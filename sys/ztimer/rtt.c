@@ -19,7 +19,8 @@ static void _ztimer_rtt_callback(void *arg)
 
 static void _ztimer_rtt_set(ztimer_dev_t *ztimer, uint32_t val)
 {
-    rtt_set_alarm(rtt_get_counter() + val, _ztimer_rtt_callback, ztimer);
+    DEBUG("ztimer_rtt_set target=%"PRIu32"\n", val);
+    rtt_set_alarm(val, _ztimer_rtt_callback, ztimer);
 }
 
 static uint32_t _ztimer_rtt_now(ztimer_dev_t *ztimer)

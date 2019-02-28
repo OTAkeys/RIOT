@@ -101,7 +101,7 @@ static const dma_conf_t dma_config[] = {
 static const timer_conf_t timer_config[] = {
     {
         .dev      = TIM5,
-        .max      = 0xffffffff,
+        .max      = 0x0000ffff,//0xffffffff,
         .rcc_mask = RCC_APB1ENR_TIM5EN,
         .bus      = APB1,
         .irqn     = TIM5_IRQn
@@ -305,8 +305,14 @@ static const i2c_conf_t i2c_config[] = {
  * @{
  */
 #define RTT_NUMOF           (1)
-#define RTT_FREQUENCY       (4096)
+#define RTT_FREQUENCY       (32768ul)
 #define RTT_MAX_VALUE       (0xffff)
+
+//sample values
+//#define XTIMER_BACKOFF              (5)
+//#define XTIMER_ISR_BACKOFF          (5)
+//#define XTIMER_OVERHEAD             (4)
+
 /** @} */
 
 #ifdef __cplusplus
