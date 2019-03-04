@@ -307,12 +307,6 @@ static const i2c_conf_t i2c_config[] = {
 #define RTT_NUMOF           (1)
 #define RTT_FREQUENCY       (32768ul)
 #define RTT_MAX_VALUE       (0xffff)
-
-//sample values
-//#define XTIMER_BACKOFF              (5)
-//#define XTIMER_ISR_BACKOFF          (5)
-//#define XTIMER_OVERHEAD             (4)
-
 /** @} */
 
 #ifdef __cplusplus

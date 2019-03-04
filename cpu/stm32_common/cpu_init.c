@@ -45,7 +45,8 @@ void cpu_init(void)
 {
     /* initialize the Cortex-M core */
     cortexm_init();
-    DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_LPTIM_STOP;
+    DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_LPTIM_STOP;   //como no sabia cual usar, lo puse antes y
+    //despues del PWR enable
     /* enable PWR module */
     periph_clk_en(APB1, BIT_APB_PWREN);
     DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_LPTIM_STOP;

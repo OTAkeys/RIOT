@@ -19,18 +19,13 @@
  */
 
 #include <stdio.h>
-#include "ztimer.h"
-#include "periph_conf.h"
+#include "xtimer.h"
+#include "timex.h"
 
 /* set interval to 1 second */
-#define _DIV    5
-#define _1SEC (RTT_FREQUENCY)
-#define INTERVAL2 (5*RTT_FREQUENCY)
-#define INTERVAL3 ((uint32_t)(((uint32_t)RTT_FREQUENCY)/_DIV))
-#define _20MSEC (655) //@32768
-#define _30MSEC (983) //@32768
-#define _200MSEC (6553)
-//#define _200MSEC (3277)
+#define _500MS (500U * US_PER_MS)
+#define INTERVAL2 (_500MS)
+#define INTERVAL3 (1U * US_PER_SEC)
 
 uint32_t cnt = 0;
 ztimer_t timer1;
@@ -47,12 +42,12 @@ static void callback20msec(void* arg){
     *cnt += 1;
     printf("cb msec %"PRIu32"\n", *cnt);
     *cnt %= _DIV;
-    ztimer_set(ZTIMER_USEC, &timer2, _200MSEC);
+    xtimer_set(ZTIMER_USEC, &timer2, _200MSEC);
 }
 
 int main(void)
 {
-    printf("RTT_FREQUENCY  %d\n", RTT_FREQUENCY);
+    printf("RTT_FREQUENCY  %ld\n", RTT_FREQUENCY);
     printf("INTERVAL3   %ld\n", INTERVAL3);
     timer1.callback = callback1seg;
     timer1.arg = NULL;

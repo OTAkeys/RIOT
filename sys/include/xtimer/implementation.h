@@ -27,10 +27,10 @@
 #error "Do not include this file directly! Use xtimer.h instead"
 #endif
 
-#ifndef MODULE_ZTIMER
+#ifndef USE_LPTIM
 #include "periph/timer.h"
 #else
-#include "ztimer.h"
+#include "periph/rtt.h"
 #endif
 
 #ifdef __cplusplus
@@ -51,10 +51,10 @@ extern volatile uint32_t _xtimer_high_cnt;
  */
 static inline uint32_t _xtimer_lltimer_now(void)
 {
-#ifndef MODULE_ZTIMER
+#ifndef USE_LPTIM
     return timer_read(XTIMER_DEV);
 #else
-    return ztimer_now(ZTIMER_USEC);
+    return rtt_get_counter();
 #endif
 }
 

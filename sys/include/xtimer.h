@@ -34,11 +34,6 @@
 #include "msg.h"
 #include "mutex.h"
 
-#ifndef MODULE_ZTIMER
-#include "board.h"
-#include "periph_conf.h"
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -21,24 +21,19 @@
 #include <stdio.h>
 #include "xtimer.h"
 #include "timex.h"
+#include "pm_layered.h"
 
 /* set interval to 1 second */
-#define INTERVAL (4U * US_PER_SEC)
+#define INTERVAL (1500000)
 int main(void)
 {
-//    xtimer_ticks32_t last_wakeup = xtimer_now();
-//
-//
-//    while(1) {
-//        xtimer_periodic_wakeup(&last_wakeup, INTERVAL);
-//        printf("slept until %" PRIu32 "\n", xtimer_usec_from_ticks(xtimer_now()));
-//    }
     xtimer_ticks32_t last_wakeup = xtimer_now();
     while(1) {
         xtimer_periodic_wakeup(&last_wakeup, INTERVAL);
         printf("slept until %" PRIu32 "\n", xtimer_usec_from_ticks(xtimer_now()));
-        xtimer_periodic_wakeup(&last_wakeup, 10*INTERVAL);
-        printf("slept **%" PRIu32 "\n", xtimer_usec_from_ticks(xtimer_now()));
+//        pm_unblock(1);
+//        xtimer_periodic_wakeup(&last_wakeup, 10*INTERVAL);
+//        printf("slept **%" PRIu32 "\n", xtimer_usec_from_ticks(xtimer_now()));
     }
 
     return 0;
