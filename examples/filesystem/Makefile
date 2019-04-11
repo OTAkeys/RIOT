@@ -45,7 +45,7 @@ USEMODULE += littlefs littlefs_auto_migrate
 # USEMODULE += spiffs
 # USEMODULE += fatfs
 USEMODULE += constfs
-# USEMODULE += devfs
+USEMODULE += devfs
 
 # Set file systems specific variables
 ifneq (,$(filter littlefs, $(USEMODULE)))

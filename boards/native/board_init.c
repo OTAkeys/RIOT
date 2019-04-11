@@ -20,21 +20,7 @@
 
 #ifdef MODULE_MTD
 #include "mtd_native.h"
-#endif
 
-/**
- * Nothing to initialize at the moment.
- * Turns the red LED on and the green LED off.
- */
-void board_init(void)
-{
-    LED0_OFF;
-    LED1_ON;
-
-    puts("RIOT native board initialized.");
-}
-
-#ifdef MODULE_MTD
 static mtd_native_dev_t mtd0_dev = {
     .dev = {
         .driver = &native_flash_driver,
@@ -46,4 +32,30 @@ static mtd_native_dev_t mtd0_dev = {
 };
 
 mtd_dev_t *mtd0 = (mtd_dev_t *)&mtd0_dev;
+
+#ifdef MODULE_DEVFS
+#include <fs/devfs.h>
+
+static devfs_t mtd0_devfs = {
+    .path = "/mtd0",
+    .f_op = &mtd_vfs_ops,
+    .private_data = &mtd0_dev,
+};
+#endif  /* MODULE_DEVFS */
 #endif
+
+/**
+ * Nothing to initialize at the moment.
+ * Turns the red LED on and the green LED off.
+ */
+void board_init(void)
+{
+    LED0_OFF;
+    LED1_ON;
+
+#ifdef MODULE_DEVFS
+    devfs_register(&mtd0_devfs);
+#endif
+
+    puts("RIOT native board initialized.");
+}
