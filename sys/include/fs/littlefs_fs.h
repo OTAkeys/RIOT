@@ -37,14 +37,7 @@ extern "C" {
  */
 #ifndef LITTLEFS_LOOKAHEAD_SIZE
 /** Default lookahead size */
-#define LITTLEFS_LOOKAHEAD_SIZE     (128)
-#endif
-
-#ifndef LITTLEFS_FILE_BUFFER_SIZE
-/** File buffer size, if 0, dynamic allocation is used.
- * If set, only one file can be used at a time, must be program size (mtd page size
- * is used internally as program size) */
-#define LITTLEFS_FILE_BUFFER_SIZE   (0)
+#define LITTLEFS_LOOKAHEAD_SIZE     (128 / 8)
 #endif
 
 #ifndef LITTLEFS_READ_BUFFER_SIZE
@@ -57,6 +50,24 @@ extern "C" {
 /** Prog buffer size, if 0, dynamic allocation is used.
  * If set, it must be program size */
 #define LITTLEFS_PROG_BUFFER_SIZE   (0)
+#endif
+
+#ifndef LITTLEFS_CACHE_SIZE
+/** Cache size, if 0, prog_size is used */
+#define LITTLEFS_CACHE_SIZE         LITTLEFS_READ_BUFFER_SIZE
+#endif
+
+#if LITTLEFS_READ_BUFFER_SIZE != LITTLEFS_PROG_BUFFER_SIZE
+#error "LITTLEFS_READ_BUFFER_SIZE != LITTLEFS_PROG_BUFFER_SIZE"
+#endif
+#if LITTLEFS_READ_BUFFER_SIZE && (LITTLEFS_READ_BUFFER_SIZE != LITTLEFS_CACHE_SIZE)
+#error "LITTLEFS_CACHE_SIZE != LITTLEFS_READ_BUFFER_SIZE"
+#endif
+
+#ifndef LITTLEFS_BLOCK_CYCLES
+/** Number of erase cycles before we should move data to another block.
+ * May be zero, in which case no block-level wear-leveling is performed. */
+#define LITTLEFS_BLOCK_CYCLES       (100)
 #endif
 /** @} */
 
@@ -72,10 +83,6 @@ typedef struct {
      * total number of block is defined in @p config.
      * if set to 0, the total number of sectors from the mtd is used */
     uint32_t base_addr;
-#if LITTLEFS_FILE_BUFFER_SIZE || DOXYGEN
-    /** file buffer to use internally if LITTLEFS_FILE_BUFFER_SIZE is set */
-    uint8_t file_buf[LITTLEFS_FILE_BUFFER_SIZE];
-#endif
 #if LITTLEFS_READ_BUFFER_SIZE || DOXYGEN
     /** read buffer to use internally if LITTLEFS_READ_BUFFER_SIZE is set */
     uint8_t read_buf[LITTLEFS_READ_BUFFER_SIZE];
@@ -85,7 +92,7 @@ typedef struct {
     uint8_t prog_buf[LITTLEFS_PROG_BUFFER_SIZE];
 #endif
     /** lookahead buffer to use internally */
-    uint8_t lookahead_buf[LITTLEFS_LOOKAHEAD_SIZE / 8];
+    __attribute__((aligned(8))) uint64_t lookahead_buf[LITTLEFS_LOOKAHEAD_SIZE];
 } littlefs_desc_t;
 
 /** The littlefs vfs driver */

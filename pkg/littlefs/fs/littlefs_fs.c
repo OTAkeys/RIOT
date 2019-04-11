@@ -146,21 +146,22 @@ static int prepare(littlefs_desc_t *fs)
     if (!fs->config.read_size) {
         fs->config.read_size = fs->dev->page_size;
     }
-    fs->config.lookahead = LITTLEFS_LOOKAHEAD_SIZE;
+    fs->config.block_cycles = LITTLEFS_BLOCK_CYCLES;
+    fs->config.lookahead_size = sizeof(fs->lookahead_buf);
     fs->config.lookahead_buffer = fs->lookahead_buf;
     fs->config.context = fs;
     fs->config.read = _dev_read;
     fs->config.prog = _dev_write;
     fs->config.erase = _dev_erase;
     fs->config.sync = _dev_sync;
-#if LITTLEFS_FILE_BUFFER_SIZE
-    fs->config.file_buffer = fs->file_buf;
-#endif
 #if LITTLEFS_READ_BUFFER_SIZE
     fs->config.read_buffer = fs->read_buf;
-#endif
-#if LITTLEFS_PROG_BUFFER_SIZE
     fs->config.prog_buffer = fs->prog_buf;
+    fs->config.cache_size = LITTLEFS_READ_BUFFER_SIZE;
+#elif LITTLEFS_CACHE_SIZE
+    fs->config.cache_size = LITTLEFS_CACHE_SIZE;
+#else
+    fs->config.cache_size = fs->config.prog_size;
 #endif
 
     return mtd_init(fs->dev);
@@ -198,6 +199,17 @@ static int _mount(vfs_mount_t *mountp)
     }
 
     ret = lfs_mount(&fs->fs, &fs->config);
+#ifdef MODULE_LITTLEFS_AUTO_MIGRATE
+    if (ret < 0) {
+        DEBUG("littlefs: migrating to v2\n");
+        ret = lfs_migrate(&fs->fs, &fs->config);
+        if (!ret) {
+            DEBUG("littlefs: migration to v2 suceed, mounting\n");
+            prepare(fs);
+            ret = lfs_mount(&fs->fs, &fs->config);
+        }
+    }
+#endif
     mutex_unlock(&fs->lock);
 
     return littlefs_err_to_errno(ret);
@@ -409,15 +421,6 @@ static int _stat(vfs_mount_t *mountp, const char *restrict path, struct stat *re
     return littlefs_err_to_errno(ret);
 }
 
-static int _traverse_cb(void *param, lfs_block_t block)
-{
-    (void)block;
-    unsigned long *nb_blocks = param;
-    (*nb_blocks)++;
-
-    return 0;
-}
-
 static int _statvfs(vfs_mount_t *mountp, const char *restrict path, struct statvfs *restrict buf)
 {
     (void)path;
@@ -428,19 +431,20 @@ static int _statvfs(vfs_mount_t *mountp, const char *restrict path, struct statv
     DEBUG("littlefs: statvfs: mountp=%p, path=%s, buf=%p\n",
           (void *)mountp, path, (void *)buf);
 
-    unsigned long nb_blocks = 0;
-    int ret = lfs_traverse(&fs->fs, _traverse_cb, &nb_blocks);
+    lfs_ssize_t nb_blocks = lfs_fs_size(&fs->fs);
     mutex_unlock(&fs->lock);
 
-    buf->f_bsize = fs->fs.cfg->block_size;      /* block size */
-    buf->f_frsize = fs->fs.cfg->block_size;     /* fundamental block size */
-    buf->f_blocks = fs->fs.cfg->block_count;    /* Blocks total */
-    buf->f_bfree = buf->f_blocks - nb_blocks;   /* Blocks free */
-    buf->f_bavail = buf->f_blocks - nb_blocks;  /* Blocks available to non-privileged processes */
-    buf->f_flag = ST_NOSUID;
-    buf->f_namemax = LFS_NAME_MAX;
+    if (nb_blocks >= 0) {
+        buf->f_bsize = fs->fs.cfg->block_size;      /* block size */
+        buf->f_frsize = fs->fs.cfg->block_size;     /* fundamental block size */
+        buf->f_blocks = fs->fs.cfg->block_count;    /* Blocks total */
+        buf->f_bfree = buf->f_blocks - nb_blocks;   /* Blocks free */
+        buf->f_bavail = buf->f_blocks - nb_blocks;  /* Blocks available to non-privileged processes */
+        buf->f_flag = ST_NOSUID;
+        buf->f_namemax = LFS_NAME_MAX;
+    }
 
-    return littlefs_err_to_errno(ret);
+    return littlefs_err_to_errno(nb_blocks);
 }
 
 static int _opendir(vfs_DIR *dirp, const char *dirname, const char *abs_path)

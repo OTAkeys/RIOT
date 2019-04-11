@@ -1,5 +1,11 @@
 INCLUDES += -I$(PKGDIRBASE)/littlefs
 
+PSEUDOMODULES += littlefs_auto_migrate
+
+ifneq (,$(filter littlefs_auto_migrate,$(USEMODULE)))
+  CFLAGS += -DLFS_MIGRATE
+endif
+
 ifneq (,$(filter littlefs_fs,$(USEMODULE)))
   DIRS += $(RIOTBASE)/pkg/littlefs/fs
 endif
