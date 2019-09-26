@@ -57,6 +57,11 @@ void pm_set_lowest(void)
         mode--;
     }
 
+    if (mode == PM_NUM_MODES) {
+        DEBUG("pm: all modes blocked\n");
+        return;
+    }
+
     /* set lowest mode if blocker is still the same */
     unsigned state = irq_disable();
     if (blocker.val_u32 == pm_blocker.val_u32) {
